@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pre-Register Payment — COD</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f4f5f7;
+    --bg-card: #ffffff;
+    --bg-input: #f8f9fa;
+    --border: #e2e4e9;
+    --border-focus: #a855f7;
+    --text: #1a1a2e;
+    --text-dim: #6b7280;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --success-border: #bbf7d0;
+    --error: #dc2626;
+    --error-bg: #fef2f2;
+    --error-border: #fecaca;
+    --gold: #d97706;
+    --gold-bg: #fffbeb;
+    --blue: #2563eb;
+    --purple: #7c3aed;
+    --purple-bg: #faf5ff;
+    --purple-border: #e9d5ff;
+    --pink: #be185d;
+    --scanner: #0891b2;
+    --neutral: #374151;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 1rem;
+  }
+
+  .container { max-width: 700px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .header { text-align: center; margin-bottom: 1.5rem; padding-top: 0.5rem; }
+  .header h1 { font-size: 1.35rem; font-weight: 700; color: var(--text); margin-bottom: 0.25rem; }
+  .header p  { color: var(--purple); font-size: 0.85rem; font-weight: 600; }
+  .header-badge {
+    display: inline-block; margin-top: 0.4rem;
+    background: var(--purple-bg); border: 1px solid var(--purple-border);
+    color: var(--purple); padding: 0.2rem 0.75rem; border-radius: 20px;
+    font-size: 0.75rem; font-weight: 700;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1.1rem; margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 0.78rem; font-weight: 700; color: var(--text-dim);
+    margin-bottom: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em;
+  }
+
+  /* ── Order input ── */
+  .order-input-wrap { margin-bottom: 1rem; }
+  .order-input-inner { display: flex; gap: 0.5rem; align-items: stretch; }
+  .order-input-prefix {
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 10px 0 0 10px; padding: 0 0.75rem;
+    font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+    color: var(--text-dim); font-weight: 700; flex-shrink: 0;
+    border-right: none;
+  }
+  .order-input {
+    flex: 1; background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 0 10px 10px 0; padding: 0.85rem 1rem;
+    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+    font-weight: 600; outline: none; direction: ltr;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .order-input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+  .order-input::placeholder { color: #9ca3af; font-size: 0.85rem; font-weight: 400; }
+  .lookup-btn {
+    background: var(--purple); color: #fff; border: none;
+    border-radius: 10px; padding: 0.85rem 1.4rem;
+    font-family: inherit; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+  }
+  .lookup-btn:hover:not(:disabled) { background: #6d28d9; }
+  .lookup-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* ── Order card (after lookup) ── */
+  .order-card {
+    display: none; background: var(--purple-bg);
+    border: 1px solid var(--purple-border);
+    border-radius: 12px; overflow: hidden; margin-bottom: 1rem;
+  }
+  .order-card.visible { display: block; }
+
+  .order-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.85rem 1rem; border-bottom: 1px solid var(--purple-border);
+    background: #fff;
+  }
+  .order-name {
+    font-family: 'JetBrains Mono', monospace; font-size: 1.05rem;
+    font-weight: 700; color: var(--purple);
+  }
+  .order-financial { font-size: 0.75rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Customer info box ── */
+  .customer-box {
+    padding: 0.75rem 1rem; border-bottom: 1px solid var(--purple-border);
+    background: #fdf8ff;
+  }
+  .customer-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+  .customer-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; }
+  .customer-label { color: var(--text-dim); font-size: 0.75rem; font-weight: 600; }
+  .customer-value { color: var(--text); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+  .customer-value.phone { direction: ltr; }
+
+  .order-card-body { padding: 0.85rem 1rem; }
+  .order-amounts { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .amount-item { flex: 1; min-width: 100px; }
+  .amount-label { font-size: 0.7rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+  .amount-value { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--text); direction: ltr; }
+  .amount-value.highlight { color: var(--purple); font-size: 1.05rem; }
+
+  .courier-row { display: flex; align-items: center; gap: 0.5rem; }
+  .courier-label { font-size: 0.75rem; color: var(--text-dim); font-weight: 600; }
+  .courier-value { font-size: 0.9rem; font-weight: 700; color: var(--pink); }
+
+  /* ── SKU table inside order card ── */
+  .sku-section { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--purple-border); }
+  .sku-label { font-size: 0.7rem; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+  .sku-table { width: 100%; border-collapse: collapse; direction: rtl; }
+  .sku-table th {
+    padding: 0.25rem 0.4rem; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.64rem; font-weight: 700; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.03em;
+    border-bottom: 1px solid var(--border); text-align: right;
+    background: transparent;
+  }
+  .sku-table th.th-qty   { text-align: center; }
+  .sku-table th.th-money { text-align: left; }
+  .sku-table td { padding: 0.25rem 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+  .sku-table .td-sku   { color: var(--scanner); font-weight: 700; }
+  .sku-table .td-qty   { color: var(--text-dim); text-align: center; }
+  .sku-table .td-money { color: var(--gold); font-weight: 700; text-align: left; direction: ltr; }
+
+  /* ── Status badges ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    padding: 0.25rem 0.65rem; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+  }
+  .badge-ready    { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .badge-already  { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+  .badge-skipped  { background: #f9fafb; color: var(--text-dim); border: 1px solid var(--border); }
+  .badge-paid     { background: var(--success-bg); color: var(--success); border: 1px solid var(--success-border); }
+  .badge-refund   { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
+  .badge-error    { background: var(--error-bg); color: var(--error); border: 1px solid var(--error-border); }
+  .badge-loading  { background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe; }
+
+  /* ── Register button ── */
+  .btn-row { margin-bottom: 1rem; }
+  .btn-register {
+    width: 100%; padding: 0.95rem; border-radius: 12px;
+    font-family: inherit; font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; border: none; transition: all 0.2s;
+    background: var(--purple); color: #fff;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.3);
+  }
+  .btn-register:hover:not(:disabled) { background: #6d28d9; box-shadow: 0 4px 12px rgba(124,58,237,0.4); }
+  .btn-register:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+  /* ── Result box ── */
+  .result-box { border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; display: none; }
+  .result-box.success { display: block; background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success); }
+  .result-box.error   { display: block; background: var(--error-bg);   border: 1px solid var(--error-border);   color: var(--error); }
+  .result-title  { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem; }
+  .result-detail { font-size: 0.8rem; opacity: 0.85; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
+    background: var(--purple); color: #fff; padding: 0.5rem 1.2rem;
+    border-radius: 20px; font-size: 0.82rem; font-weight: 700;
+    opacity: 0; transition: opacity 0.25s; z-index: 100; pointer-events: none;
+    font-family: 'JetBrains Mono', monospace; box-shadow: var(--shadow-md);
+  }
+  .toast.show { opacity: 1; }
+
+  /* ── Settings ── */
+  .settings-toggle {
+    width: 100%; background: var(--bg-card); border: 1px solid var(--border);
+    color: var(--text-dim); padding: 0.6rem; border-radius: 10px;
+    font-family: inherit; font-size: 0.85rem; cursor: pointer;
+    margin-bottom: 0.75rem; transition: all 0.2s; box-shadow: var(--shadow);
+  }
+  .settings-toggle:hover { border-color: var(--purple); color: var(--purple); }
+  .settings-content { display: none; margin-bottom: 0.75rem; }
+  .settings-content.active { display: block; }
+  .input-group { margin-bottom: 0.75rem; }
+  .input-group:last-child { margin-bottom: 0; }
+  .input-group label { display: block; font-size: 0.8rem; color: var(--text-dim); font-weight: 600; margin-bottom: 0.35rem; }
+  .input-group input {
+    width: 100%; background: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 10px; padding: 0.75rem 1rem; color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+    outline: none; transition: border-color 0.2s; direction: ltr;
+  }
+  .input-group input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
+  .settings-note {
+    font-size: 0.72rem; color: var(--text-dim); background: var(--bg-input);
+    border: 1px dashed var(--border); border-radius: 8px; padding: 0.5rem 0.7rem;
+    margin-bottom: 0.75rem; line-height: 1.5;
+  }
+
+  .spinner {
+    width: 14px; height: 14px; border: 2px solid transparent;
+    border-top-color: currentColor; border-radius: 50%;
+    animation: spin 0.8s linear infinite; display: inline-block;
+    vertical-align: middle; margin-left: 0.35rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Log ── */
+  .log-section { margin-top: 0.5rem; }
+  .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+  .log-header h2 { font-size: 0.92rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
+  .log-actions { display: flex; gap: 0.5rem; }
+  .log-btn {
+    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim);
+    padding: 0.35rem 0.7rem; border-radius: 8px; font-family: inherit;
+    font-size: 0.75rem; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow);
+  }
+  .log-btn:hover { border-color: var(--purple); color: var(--purple); }
+  .log-empty {
+    text-align: center; padding: 2rem; color: var(--text-dim);
+    font-size: 0.85rem; background: var(--bg-card);
+    border: 1px dashed var(--border); border-radius: 12px;
+  }
+  .log-list { max-height: 420px; overflow-y: auto; }
+
+  .log-entry {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 12px; margin-bottom: 0.5rem; overflow: hidden;
+    box-shadow: var(--shadow); transition: border-color 0.2s;
+  }
+  .log-entry:hover { border-color: var(--purple-border); }
+  .log-entry-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.75rem 1rem; cursor: pointer; gap: 0.5rem;
+  }
+  .log-entry-info { flex: 1; min-width: 0; }
+  .log-entry-date { font-family: 'JetBrains Mono', monospace; font-size: 0.73rem; color: var(--text-dim); margin-bottom: 0.3rem; }
+  .log-entry-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+  .log-tag {
+    padding: 0.15rem 0.55rem; border-radius: 20px;
+    font-size: 0.7rem; font-weight: 700;
+  }
+  .log-tag.tag-prereg { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
+  .log-tag.tag-count  { background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe; }
+  .log-tag.tag-amount { background: var(--gold-bg); color: var(--gold); border: 1px solid #fde68a; }
+  .log-entry-right { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
+  .log-entry-stats { display: flex; gap: 0.4rem; font-size: 0.75rem; }
+  .stat-s { color: var(--success); font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .stat-e { color: var(--error);   font-family: 'JetBrains Mono', monospace; font-weight: 700; }
+  .log-toggle { color: var(--text-dim); font-size: 0.75rem; transition: transform 0.2s; }
+  .log-entry.open .log-toggle { transform: rotate(90deg); }
+
+  .log-entry-details { display: none; border-top: 1px solid var(--border); }
+  .log-entry.open .log-entry-details { display: block; }
+  .log-detail-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.5rem 1rem; font-size: 0.8rem; border-bottom: 1px solid var(--border);
+  }
+  .log-detail-row:last-child { border-bottom: none; }
+  .log-detail-name { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text); }
+  .log-detail-courier { font-size: 0.72rem; color: var(--pink); font-weight: 600; margin-right: 0.4rem; }
+  .log-detail-id { font-size: 0.7rem; color: var(--text-dim); margin-right: 0.3rem; }
+  .log-detail-amt { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--gold); font-weight: 700; }
+  .log-detail-badge {
+    padding: 0.15rem 0.45rem; border-radius: 8px; font-size: 0.68rem; font-weight: 700;
+  }
+  .ldb-success { background: var(--success-bg); color: var(--success); }
+  .ldb-error   { background: var(--error-bg);   color: var(--error); }
+
+  .log-sync-status { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: 700; }
+  .log-sync-status.synced  { color: var(--success); background: var(--success-bg); border: 1px solid var(--success-border); }
+  .log-sync-status.local   { color: var(--gold);    background: var(--gold-bg);    border: 1px solid #fde68a; }
+  .log-sync-status.loading { color: var(--purple);  background: var(--purple-bg);  border: 1px solid var(--purple-border); }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 1rem 0; }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="container">
+
+  <header class="header">
+    <h1>📋 Pre-Register Payment — COD</h1>
+    <p>تسجيل الدفع على شوبيفاي بدون تحصيل فعلي من المندوب</p>
+    <span class="header-badge">⏳ بانتظار التحصيل</span>
+  </header>
+
+  <!-- Order Lookup -->
+  <div class="card">
+    <div class="card-title">🔍 استعلام عن الأوردر</div>
+    <div class="order-input-wrap">
+      <div class="order-input-inner">
+        <span class="order-input-prefix">#</span>
+        <input type="text" id="orderInput" class="order-input"
+          placeholder="أدخل رقم الأوردر..."
+          autocomplete="off" spellcheck="false" inputmode="numeric">
+        <button class="lookup-btn" id="lookupBtn" onclick="handleLookup()">استعلام</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Card (shown after lookup) -->
+  <div class="order-card" id="orderCard">
+    <div class="order-card-header">
+      <div>
+        <span class="order-name" id="ocOrderName">—</span>
+        <span class="order-financial" id="ocFinancial" style="margin-right:0.75rem">—</span>
+      </div>
+      <span id="ocBadge"></span>
+    </div>
+
+    <!-- Customer info (display only, never logged) -->
+    <div class="customer-box" id="customerBox" style="display:none">
+      <div class="customer-row">
+        <div class="customer-field">
+          <span class="customer-label">👤 الاسم:</span>
+          <span class="customer-value" id="ocCustomerName">—</span>
+        </div>
+        <div class="customer-field">
+          <span class="customer-label">📞 التليفون:</span>
+          <span class="customer-value phone" id="ocCustomerPhone">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="order-card-body">
+      <div class="order-amounts">
+        <div class="amount-item">
+          <div class="amount-label">تحصيل المندوب</div>
+          <div class="amount-value highlight" id="ocCourierCollect">—</div>
+        </div>
+        <div class="amount-item">
+          <div class="amount-label">شحن</div>
+          <div class="amount-value" id="ocShipping">—</div>
+        </div>
+        <div class="amount-item">
+          <div class="amount-label">إجمالي شوبيفاي</div>
+          <div class="amount-value" id="ocTotal">—</div>
+        </div>
+      </div>
+      <div class="courier-row">
+        <span class="courier-label">المندوب:</span>
+        <span class="courier-value" id="ocCourier">—</span>
+      </div>
+      <div class="sku-section" id="ocSkuSection" style="display:none">
+        <div class="sku-label">المنتجات</div>
+        <table class="sku-table">
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th class="th-qty">Qty</th>
+              <th class="th-money">Unit</th>
+              <th class="th-money">Total</th>
+            </tr>
+          </thead>
+          <tbody id="ocSkuBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Button -->
+  <div class="btn-row">
+    <button class="btn-register" id="registerBtn" onclick="confirmRegister()" disabled>
+      📋 تسجيل الدفع على شوبيفاي
+    </button>
+  </div>
+
+  <!-- Result -->
+  <div class="result-box" id="resultBox">
+    <div class="result-title"  id="resultTitle"></div>
+    <div class="result-detail" id="resultDetail"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Settings -->
+  <button class="settings-toggle" onclick="toggleSettings()">⚙️ الإعدادات</button>
+  <div class="settings-content" id="settings">
+    <div class="card">
+      <div class="input-group">
+        <label>Worker URL</label>
+        <input type="text" id="workerUrl" placeholder="https://pre-register-payment-cod-worker.ecommoda24.workers.dev">
+      </div>
+      <div class="input-group">
+        <label>Worker Secret</label>
+        <input type="password" id="workerSecret" placeholder="WORKER_SECRET">
+      </div>
+      <div class="settings-note">
+        📌 السجل بقى بيتكتب على D1 عن طريق cod-payment-center-worker — دخّل الـ URL/Secret بتاعه هنا (مش أداة لوج منفصلة زي قبل)
+      </div>
+      <div class="input-group">
+        <label>COD Payment Center Worker URL (للسجل)</label>
+        <input type="text" id="logWorkerUrl" placeholder="https://cod-payment-center-worker.ecommoda-dev.workers.dev">
+      </div>
+      <div class="input-group" style="margin-bottom:0">
+        <label>COD Payment Center Worker Secret</label>
+        <input type="password" id="logWorkerSecret" placeholder="WORKER_SECRET">
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-section">
+    <div class="log-header">
+      <h2>📋 سجل التسجيل المسبق <span class="log-sync-status local" id="logSyncStatus">محلي</span></h2>
+      <div class="log-actions">
+        <button class="log-btn" onclick="syncFromCloud()" title="جلب من D1">🔄</button>
+        <button class="log-btn" onclick="exportLogCSV()">📥 تصدير</button>
+      </div>
+    </div>
+    <div class="log-list" id="logList">
+      <div class="log-empty">لا توجد تسجيلات مسبقة</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  // ── Settings ──────────────────────────────────────────────────────
+  $('workerUrl').value       = localStorage.getItem('prereg_worker_url')     || '';
+  $('workerSecret').value    = localStorage.getItem('prereg_worker_secret')  || '';
+  $('logWorkerUrl').value    = localStorage.getItem('cod_log_worker_url')    || '';
+  $('logWorkerSecret').value = localStorage.getItem('cod_log_worker_secret') || '';
+  $('workerUrl').addEventListener('change',       e => localStorage.setItem('prereg_worker_url',     e.target.value));
+  $('workerSecret').addEventListener('change',    e => localStorage.setItem('prereg_worker_secret',  e.target.value));
+  $('logWorkerUrl').addEventListener('change',    e => localStorage.setItem('cod_log_worker_url',    e.target.value));
+  $('logWorkerSecret').addEventListener('change', e => localStorage.setItem('cod_log_worker_secret', e.target.value));
+
+  // ── State ─────────────────────────────────────────────────────────
+  let currentOrder = null;  // single order at a time
+  let isProcessing = false;
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  function fmt(num) {
+    return Number(num).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function financialLabel(s) {
+    return { PAID:'Paid', PARTIALLY_PAID:'Partially Paid', PENDING:'Pending',
+             AUTHORIZED:'Authorized', REFUNDED:'Refunded', VOIDED:'Voided' }[s] || s || '—';
+  }
+
+  // ── Input Enter key ───────────────────────────────────────────────
+  $('orderInput').addEventListener('keypress', e => {
+    if (e.key === 'Enter') { e.preventDefault(); handleLookup(); }
+  });
+
+  // ── Lookup ────────────────────────────────────────────────────────
+  async function handleLookup() {
+    const raw = $('orderInput').value.trim().replace(/^#/, '');
+    if (!raw) { $('orderInput').focus(); return; }
+
+    const workerUrl    = $('workerUrl').value.trim();
+    const workerSecret = $('workerSecret').value.trim();
+    if (!workerUrl || !workerSecret) {
+      $('settings').classList.add('active');
+      return;
+    }
+
+    const btn = $('lookupBtn');
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span> جاري...`;
+    hideResult();
+    hideOrderCard();
+    currentOrder = null;
+    $('registerBtn').disabled = true;
+
+    try {
+      // Step 1: resolve name → numeric ID
+      const r1 = await fetch(workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${workerSecret}` },
+        body: JSON.stringify({ action: 'resolveByName', orderName: '#' + raw }),
+      });
+      const d1 = await r1.json();
+
+      if (!d1.success || !d1.orderId) {
+        showToast('⚠️ #' + raw + ' غير موجود', 'warn');
+        btn.disabled = false; btn.textContent = 'استعلام';
+        return;
+      }
+
+      // Step 2: preview
+      const r2 = await fetch(workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${workerSecret}` },
+        body: JSON.stringify({ action: 'preview', orderId: d1.orderId }),
+      });
+      const d2 = await r2.json();
+
+      if (!d2.success) {
+        showToast('⚠️ خطأ في الاستعلام', 'warn');
+        btn.disabled = false; btn.textContent = 'استعلام';
+        return;
+      }
+
+      currentOrder = {
+        id:               d1.orderId,
+        orderName:        d2.orderName,
+        amount:           parseFloat(d2.amount),
+        subtotal:         parseFloat(d2.subtotal),
+        shippingAmount:   parseFloat(d2.shippingAmount),
+        canMarkAsPaid:    d2.canMarkAsPaid,
+        skipReason:       d2.skipReason || null,
+        financialStatus:  d2.financialStatus || null,
+        courier:          d2.courier || null,
+        lineItems:        d2.lineItems || [],
+        alreadyPreReg:    d2.alreadyPreRegistered || false,
+        registeredAt:     d2.registeredAt || null,
+        // customer info — display only, never logged
+        customerName:     d2.customerName  || null,
+        customerPhone:    d2.customerPhone || null,
+      };
+
+      renderOrderCard();
+
+    } catch {
+      showToast('⚠️ خطأ في الاتصال', 'warn');
+    }
+
+    btn.disabled = false; btn.textContent = 'استعلام';
+  }
+
+  // ── Render order card ─────────────────────────────────────────────
+  function renderOrderCard() {
+    const o = currentOrder;
+    if (!o) return;
+
+    $('ocOrderName').textContent   = o.orderName || `ID: ${o.id}`;
+    $('ocFinancial').textContent   = financialLabel(o.financialStatus);
+    $('ocCourier').textContent     = o.courier || '—';
+    $('ocCourier').style.color     = o.courier ? 'var(--pink)' : 'var(--text-dim)';
+
+    const cc = (o.amount != null && o.shippingAmount != null) ? o.amount - o.shippingAmount : null;
+    $('ocCourierCollect').textContent = cc != null ? fmt(cc) + ' EGP' : '—';
+    $('ocShipping').textContent       = o.shippingAmount != null ? fmt(o.shippingAmount) + ' EGP' : '—';
+    $('ocTotal').textContent          = o.amount != null ? fmt(o.amount) + ' EGP' : '—';
+
+    // Customer info
+    if (o.customerName || o.customerPhone) {
+      $('ocCustomerName').textContent  = o.customerName  || '—';
+      $('ocCustomerPhone').textContent = o.customerPhone || '—';
+      $('customerBox').style.display   = 'block';
+    } else {
+      $('customerBox').style.display   = 'none';
+    }
+
+    // Badge
+    let badge = '';
+    if (o.alreadyPreReg) {
+      badge = `<span class="badge badge-already">🔄 مسجل مسبقاً</span>`;
+    } else if (o.canMarkAsPaid) {
+      badge = `<span class="badge badge-ready">✅ جاهز للتسجيل</span>`;
+    } else if (o.skipReason === 'مدفوع بالكامل') {
+      badge = `<span class="badge badge-paid">مدفوع بالكامل</span>`;
+    } else if (o.skipReason === 'مستحق استرداد') {
+      badge = `<span class="badge badge-refund">يستحق الاسترداد</span>`;
+    } else {
+      badge = `<span class="badge badge-skipped">${o.skipReason || 'غير متاح'}</span>`;
+    }
+    $('ocBadge').innerHTML = badge;
+
+    // SKUs
+    if (o.lineItems && o.lineItems.length > 0) {
+      $('ocSkuBody').innerHTML = o.lineItems.map(li => `
+        <tr>
+          <td class="td-sku">${li.sku}</td>
+          <td class="td-qty">${li.quantity}</td>
+          <td class="td-money">${fmt(li.unitPrice)}</td>
+          <td class="td-money">${fmt(li.totalPrice)}</td>
+        </tr>`).join('');
+      $('ocSkuSection').style.display = 'block';
+    } else {
+      $('ocSkuSection').style.display = 'none';
+    }
+
+    $('orderCard').classList.add('visible');
+
+    // Enable register only if can be registered
+    $('registerBtn').disabled = !o.canMarkAsPaid || o.alreadyPreReg || isProcessing;
+  }
+
+  function hideOrderCard() {
+    $('orderCard').classList.remove('visible');
+    $('customerBox').style.display = 'none';
+    $('ocSkuSection').style.display = 'none';
+  }
+
+  // ── Confirm & Register ────────────────────────────────────────────
+  async function confirmRegister() {
+    if (!currentOrder || !currentOrder.canMarkAsPaid || currentOrder.alreadyPreReg) return;
+
+    const o = currentOrder;
+    const cc = o.amount - o.shippingAmount;
+
+    // Build confirm message — customer info shown here but NOT logged
+    const lines = [
+      `سيتم تسجيل الدفع المسبق على شوبيفاي`,
+      ``,
+      `الأوردر: ${o.orderName}`,
+    ];
+    if (o.customerName)  lines.push(`العميل: ${o.customerName}`);
+    if (o.customerPhone) lines.push(`التليفون: ${o.customerPhone}`);
+    lines.push(
+      `المندوب: ${o.courier || '—'}`,
+      `إجمالي شوبيفاي: ${fmt(o.amount)} EGP`,
+      `تحصيل المندوب: ${fmt(cc)} EGP`,
+      ``,
+      `⚠️ سيظهر الأوردر كـ "مدفوع" على شوبيفاي فوراً`,
+      `التحصيل الفعلي سيتم لاحقاً عبر Scanner Payment`,
+      ``,
+      `متأكد؟`
+    );
+
+    if (!confirm(lines.join('\n'))) return;
+
+    const workerUrl    = $('workerUrl').value.trim();
+    const workerSecret = $('workerSecret').value.trim();
+
+    isProcessing = true;
+    $('registerBtn').disabled = true;
+    $('registerBtn').innerHTML = `<span class="spinner"></span> جاري التسجيل...`;
+    hideResult();
+
+    try {
+      const res  = await fetch(workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${workerSecret}` },
+        body: JSON.stringify({
+          action: 'preRegister',
+          orderId: o.id,
+          amount: o.amount.toFixed(2),
+          orderName: o.orderName,
+          subtotal: o.subtotal.toFixed(2),
+          shippingAmount: o.shippingAmount.toFixed(2),
+          courier: o.courier,
+          lineItems: o.lineItems,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        currentOrder.alreadyPreReg = true;
+        currentOrder.canMarkAsPaid = false;
+        renderOrderCard();
+        showResult(true, `✅ تم التسجيل بنجاح`, `${o.orderName} — سيظهر في Scanner Payment عند مسحه`);
+
+        // Log entry — customer info excluded intentionally
+        const logEntry = {
+          date:        new Date().toISOString(),
+          type:        'preRegister',
+          courier:     o.courier || '—',
+          totalOrders: 1,
+          success:     1,
+          errors:      0,
+          totalAmount: o.amount.toFixed(2),
+          orders: [{
+            order:          o.id,
+            orderName:      o.orderName || '',
+            courier:        o.courier || '',
+            amount:         o.amount.toFixed(2),
+            subtotal:       o.subtotal.toFixed(2),
+            shippingAmount: o.shippingAmount.toFixed(2),
+            lineItems:      o.lineItems,
+            status:         'success',
+            error:          null,
+          }],
+        };
+        await saveLogEntry(logEntry);
+
+        // Clear input for next order
+        $('orderInput').value = '';
+
+      } else {
+        showResult(false, 'فشل التسجيل', data.error || 'خطأ غير معروف');
+        $('registerBtn').disabled = false;
+      }
+
+    } catch {
+      showResult(false, 'خطأ في الاتصال', '');
+      $('registerBtn').disabled = false;
+    }
+
+    isProcessing = false;
+    $('registerBtn').innerHTML = '📋 تسجيل الدفع على شوبيفاي';
+  }
+
+  // ── UI helpers ────────────────────────────────────────────────────
+  function showResult(ok, title, detail) {
+    $('resultBox').className = `result-box ${ok ? 'success' : 'error'}`;
+    $('resultTitle').textContent  = title;
+    $('resultDetail').textContent = detail;
+  }
+  function hideResult() { $('resultBox').className = 'result-box'; }
+  function toggleSettings() { $('settings').classList.toggle('active'); }
+
+  function showToast(msg, type = 'ok') {
+    const t = $('toast');
+    t.textContent = msg;
+    t.style.background = type === 'warn' ? '#d97706' : 'var(--purple)';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 1400);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // LOG — يتخزن محلي فورًا للعرض، وبيتكتب بالتوازي على D1 عن طريق
+  // ?action=write_external_log على cod-payment-center-worker (tool=cod_preregister)
+  // ══════════════════════════════════════════════════════════════
+  const LOG_KEY = 'prereg_payment_log';
+
+  function getLogConfig() { return { url: $('logWorkerUrl').value.trim(), secret: $('logWorkerSecret').value.trim() }; }
+  function hasLogWorker() { const { url, secret } = getLogConfig(); return !!(url && secret); }
+
+  function updateSyncStatus(s) {
+    const el = $('logSyncStatus');
+    el.className = `log-sync-status ${s}`;
+    el.textContent = s === 'synced' ? '☁️ D1' : s === 'loading' ? '⏳ جاري...' : '💾 محلي';
+  }
+
+  function getLog() {
+    try { return JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); } catch { return []; }
+  }
+
+  // ⚠️ بدل ما نبعت الـ entry كله لـ /log زي قبل، بنكسّره لصف D1 مستقل لكل
+  // أوردر جوه entry.orders[] (غالبًا أوردر واحد بس هنا) عن طريق write_external_log.
+  async function saveLogEntry(entry) {
+    const log = getLog(); log.unshift(entry);
+    localStorage.setItem(LOG_KEY, JSON.stringify(log));
+    renderLog(log);
+    if (hasLogWorker()) {
+      try {
+        updateSyncStatus('loading');
+        const { url, secret } = getLogConfig();
+        for (const o of (entry.orders || [])) {
+          await fetch(`${url}?action=write_external_log`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${secret}` },
+            body: JSON.stringify({
+              tool: 'cod_preregister', type: 'preregister',
+              orderId: o.order, orderName: o.orderName,
+              valueAfter: o.amount ? parseFloat(o.amount) : null,
+              extra: {
+                batchId: entry.date, courier: o.courier || entry.courier || null,
+                lineItems: o.lineItems || [], subtotal: o.subtotal || null,
+                shippingAmount: o.shippingAmount || null,
+              },
+            }),
+          });
+        }
+        updateSyncStatus('synced');
+      } catch { updateSyncStatus('local'); }
+    }
+  }
+
+  // ⚠️ بيقرا من ?action=get_logs&tool=cod_preregister بدل /log القديم،
+  // وبيجمّع صفوف D1 المسطّحة رجوع لشكل entry القديم حسب extra.batchId.
+  async function syncFromCloud() {
+    if (!hasLogWorker()) { alert('أدخل COD Payment Center Worker URL و Secret في الإعدادات'); $('settings').classList.add('active'); return; }
+    try {
+      updateSyncStatus('loading');
+      const { url, secret } = getLogConfig();
+      const res = await fetch(`${url}?action=get_logs&tool=cod_preregister&limit=200`, { headers: { 'Authorization': `Bearer ${secret}` } });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'فشل');
+
+      const groups = {};
+      for (const row of (data.entries || [])) {
+        let extra = {};
+        try { extra = row.extra ? JSON.parse(row.extra) : {}; } catch {}
+        const batchId = extra.batchId || ('row-' + row.id);
+        if (!groups[batchId]) {
+          groups[batchId] = {
+            date: row.timestamp, type: 'preRegister', courier: extra.courier || '—',
+            totalOrders: 0, success: 0, errors: 0, totalAmount: 0, orders: [],
+          };
+        }
+        const g = groups[batchId];
+        g.totalOrders++; g.success++;
+        g.totalAmount += parseFloat(row.value_after) || 0;
+        g.orders.push({
+          order: row.order_id, orderName: row.order_name, courier: extra.courier || g.courier,
+          amount: row.value_after, status: 'success', error: null,
+        });
+      }
+      const fromCloud = Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      const merged = mergeAndDedupe(getLog(), fromCloud);
+      localStorage.setItem(LOG_KEY, JSON.stringify(merged));
+      renderLog(merged); updateSyncStatus('synced');
+    } catch (err) { updateSyncStatus('local'); alert('فشل جلب السجل: ' + err.message); }
+  }
+
+  function mergeAndDedupe(a, b) {
+    const seen = new Set(), m = [];
+    for (const e of [...a, ...b]) { if (!seen.has(e.date)) { seen.add(e.date); m.push(e); } }
+    m.sort((x, y) => new Date(y.date) - new Date(x.date));
+    return m;
+  }
+
+  function toggleLogEntry(el) { el.closest('.log-entry').classList.toggle('open'); }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return `${d.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' })} — ${d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12: true })}`;
+  }
+
+  function renderLog(log) {
+    if (!log) log = getLog();
+    const container = $('logList');
+    if (!log.length) { container.innerHTML = '<div class="log-empty">لا توجد تسجيلات مسبقة</div>'; return; }
+
+    container.innerHTML = log.map(entry => `
+      <div class="log-entry">
+        <div class="log-entry-header" onclick="toggleLogEntry(this)">
+          <div class="log-entry-info">
+            <div class="log-entry-date">${formatDate(entry.date)}</div>
+            <div class="log-entry-summary">
+              <span class="log-tag tag-prereg">📋 تسجيل مسبق</span>
+              ${entry.courier ? `<span class="log-tag" style="background:#fdf2f8;color:var(--pink);border:1px solid #fbcfe8">👤 ${entry.courier}</span>` : ''}
+              <span class="log-tag tag-count">${entry.totalOrders} أوردر</span>
+              ${entry.totalAmount ? `<span class="log-tag tag-amount">${parseFloat(entry.totalAmount).toLocaleString('en-US',{minimumFractionDigits:2})} EGP</span>` : ''}
+            </div>
+          </div>
+          <div class="log-entry-right">
+            <div class="log-entry-stats">
+              <span class="stat-s">✓${entry.success}</span>
+              <span class="stat-e">✗${entry.errors}</span>
+            </div>
+            <span class="log-toggle">▶</span>
+          </div>
+        </div>
+        <div class="log-entry-details">
+          ${(entry.orders || []).map(o => `
+            <div class="log-detail-row">
+              <span class="log-detail-name">
+                ${o.orderName || ''}
+                <span class="log-detail-id">${o.order}</span>
+                ${o.courier ? `<span class="log-detail-courier">${o.courier}</span>` : ''}
+              </span>
+              <span style="display:flex;align-items:center;gap:0.5rem">
+                <span class="log-detail-amt">${o.amount || ''}</span>
+                <span class="log-detail-badge ${o.status === 'success' ? 'ldb-success' : 'ldb-error'}">${o.status === 'success' ? '✓' : '✗'}</span>
+              </span>
+            </div>`).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function exportLogCSV() {
+    const log = getLog();
+    if (!log.length) { alert('السجل فارغ'); return; }
+    const BOM = '\uFEFF';
+    const headers = ['التاريخ', 'المندوب', 'رقم الأوردر', 'SKU', 'الكمية', 'سعر الوحدة', 'شحن', 'تحصيل المندوب', 'النتيجة'];
+    const rows = [headers.join(',')];
+
+    for (const entry of log) {
+      const date    = new Date(entry.date).toLocaleDateString('en-GB');
+      const courier = entry.courier || '—';
+      for (const o of (entry.orders || [])) {
+        const cc = (o.amount && o.shippingAmount)
+          ? (parseFloat(o.amount) - parseFloat(o.shippingAmount)).toFixed(2) : '0.00';
+        const result = o.status === 'success' ? 'ناجح' : 'فشل';
+        if (o.lineItems && o.lineItems.length > 0) {
+          o.lineItems.forEach((li, idx) => {
+            rows.push([
+              idx === 0 ? date : '',
+              idx === 0 ? courier : '',
+              idx === 0 ? (o.orderName || '—') : '',
+              `"${li.sku}"`, li.quantity, li.unitPrice || '0.00',
+              idx === 0 ? (o.shippingAmount || '0.00') : '',
+              idx === 0 ? cc : '',
+              idx === 0 ? result : '',
+            ].join(','));
+          });
+        } else {
+          rows.push([date, courier, o.orderName || '—', '', '', '', o.shippingAmount || '0.00', cc, result].join(','));
+        }
+      }
+      rows.push(Array(headers.length).fill('').join(','));
+    }
+
+    const blob = new Blob([BOM + rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `prereg-log-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // Init
+  renderLog();
+  if (hasLogWorker()) syncFromCloud();
+</script>
+</body>
+</html>
