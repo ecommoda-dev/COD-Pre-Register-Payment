@@ -454,7 +454,16 @@
   .data-table tbody tr:hover{background:var(--surface-2);}
   .col-num{font-family:var(--font-mono);direction:ltr;white-space:nowrap;}
   .empty-row td{padding:40px;text-align:center;color:var(--text-muted);font-size:13px;}
-  .items-cell{max-width:280px;white-space:normal;text-align:right;font-size:11.5px;color:var(--text-secondary);line-height:1.7;}
+  /* عمود المنتجات — القاعدة العامة `.data-table tbody td` فيها white-space:nowrap
+     وسبيسيفيتي أعلى من `.items-cell` لوحدها، فالنص كان بيفضل سطر واحد ويخرج برة
+     حدود الخلية بدل ما يلف جوه الـ max-width. لازم يتكتب بنفس التخصيص أو أعلى. */
+  .data-table tbody td.items-cell{max-width:280px;min-width:190px;white-space:normal;
+    text-align:center;font-size:11.5px;color:var(--text-secondary);line-height:1.6;
+    overflow-wrap:anywhere;}
+  .items-chips{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;}
+  .item-chip{display:inline-block;max-width:100%;padding:2px 7px;border-radius:6px;
+    background:var(--surface-2);border:1px solid var(--border);font-size:11px;font-weight:600;
+    color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
   .pagination-row{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;flex-wrap:wrap;}
   .page-info{font-size:13px;color:var(--text-secondary);font-family:var(--mono);padding:0 8px;}
@@ -1123,7 +1132,18 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.3.0</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.3.1</span>
+          <span class="cl-ver-date">01-09-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span>عمود <b>المنتجات</b> في السجل كان بيخرج برة الخلية لما المنتجات تكتر — قاعدة <code>td</code> العامة فيها <code>white-space:nowrap</code> وسبيسيفيتها أعلى من <code>.items-cell</code>، فالـ <code>white-space:normal</code> ماكانش بيتطبّق أصلاً</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>كل منتج بقى <b>chip</b> لوحده بيلف على أسطر بدل نص متصل — الـ SKU مابيتقطعش في نصّه، و<code>title</code> على الخلية بيعرض القائمة كاملة</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.3.0</span>
           <span class="cl-ver-date">01-09-2026</span>
         </div>
         <ul class="cl-items">
@@ -1225,7 +1245,7 @@
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.3.0';
+  const TOOL_VERSION = '2.3.1';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
   const MIN_WORKER_VERSION = '2.4.0';   // النسخة اللي فيها endpoints السجل شغّالة فعلاً
@@ -2081,8 +2101,12 @@
       const amount   = row.value_after != null ? Number(row.value_after) : null;
       const shipping = extra.shippingAmount != null ? Number(extra.shippingAmount) : null;
       const collect  = (amount != null && shipping != null) ? amount - shipping : null;
-      const items    = (extra.lineItems || [])
-        .map(li => `${esc(li.sku)} × ${esc(li.quantity)}`).join('، ');
+      const lineItems  = extra.lineItems || [];
+      const itemsPlain = lineItems.map(li => `${li.sku} × ${li.quantity}`).join('، ');
+      const itemsCell  = lineItems.length
+        ? `<div class="items-chips">${lineItems
+            .map(li => `<span class="item-chip">${esc(li.sku)} × ${esc(li.quantity)}</span>`).join('')}</div>`
+        : '—';
 
       // الصفوف الأقدم من Worker v2.1.0 مالهاش extra.result — بتتعرض "—" مش "✓"،
       // إحنا فعليًا مش عارفين إن كانت كل الخطوات تمّت وقتها.
@@ -2101,7 +2125,7 @@
         <td class="col-num">${shipping != null ? fmt(shipping) : '—'}</td>
         <td class="col-num">${collect  != null ? fmt(collect)  : '—'}</td>
         <td>${extra.courier ? esc(extra.courier) : '—'}</td>
-        <td class="items-cell">${items || '—'}</td>
+        <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
         <td>${res}</td>
       </tr>`;
     }).join('');
