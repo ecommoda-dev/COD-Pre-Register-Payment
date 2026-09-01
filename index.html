@@ -240,6 +240,76 @@
   .result-actions ul { margin: 0; padding-inline-start: 1.1rem; }
 
 
+
+  /* ══════════════════════════════════════════════════════
+     §TABS — التابات الرئيسية + Freeze on Scroll
+     منسوخ من references/tabs-and-modals.md § 1 و § 1b
+     ══════════════════════════════════════════════════════ */
+  .main-tabs-bar {
+    display: flex; gap: 4px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 6px; margin-bottom: 14px;
+    box-shadow: var(--shadow); overflow: hidden;
+    transition: max-height .22s ease, opacity .18s ease, padding .18s ease, margin .18s ease, border-width .18s ease;
+  }
+  .main-tab-btn {
+    flex: 1; padding: 9px 10px; border: 2px solid transparent; background: transparent;
+    border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600;
+    color: var(--text-secondary); cursor: pointer; transition: all .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap;
+  }
+  .main-tab-btn:hover  { background: var(--surface-2); color: var(--text-primary); }
+  .main-tab-btn.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(124,58,237,.25);
+  }
+  .tab-panel        { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Freeze on Scroll — عتبتان + rAF throttle (منع باج الفليكر 30-08-2026) */
+  .sticky-header-wrap { position: sticky; top: 0; z-index: 300; background: var(--bg); padding-top: 2px; margin: 0 -2px; }
+  .sticky-header-wrap.stuck { box-shadow: 0 6px 18px rgba(0,0,0,.10); }
+  .sticky-header-wrap.stuck .app-header        { padding: 6px 14px; margin-bottom: 6px; }
+  .sticky-header-wrap.stuck .app-icon          { font-size: 16px; }
+  .sticky-header-wrap.stuck .app-title-text h1 { font-size: 12.5px; }
+  .sticky-header-wrap.stuck .app-title-text span { max-height: 0; opacity: 0; margin-top: 0; }
+  .sticky-header-wrap.stuck .hbtn              { padding: 4px 9px; font-size: 11px; }
+  .sticky-header-wrap.stuck .main-tabs-bar {
+    max-height: 0 !important; opacity: 0; padding: 0; margin-bottom: 0; border-width: 0;
+  }
+  .app-header        { transition: padding .18s ease; }
+  .app-icon          { transition: font-size .18s ease; }
+  .app-title-text h1 { transition: font-size .18s ease; }
+  .app-title-text span {
+    display: block; overflow: hidden; max-height: 34px; margin-top: 2px;
+    transition: max-height .18s ease, opacity .18s ease, margin-top .18s ease;
+  }
+
+  /* Chip التاب الحالي — بديل شريط التابات المقفول وقت الـ Sticky */
+  .active-tab-chip {
+    display: none; align-items: center; gap: 6px; padding: 5px 10px;
+    border: 1.5px solid var(--border-strong); border-radius: 20px;
+    background: var(--surface-2); font-size: 11.5px; font-weight: 700; color: var(--text-primary);
+    cursor: pointer; position: relative; white-space: nowrap; transition: border-color .15s, color .15s;
+  }
+  .active-tab-chip:hover { border-color: var(--accent); color: var(--accent); }
+  .active-tab-chip.open  { border-color: var(--accent); color: var(--accent-dark); background: var(--accent-light); }
+  .sticky-header-wrap.stuck .active-tab-chip { display: flex; }
+  .chip-arrow { font-size: 9px; color: var(--text-muted); transition: transform .2s; }
+  .active-tab-chip.open .chip-arrow { transform: rotate(180deg); }
+  .tab-chip-menu {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 310; min-width: 180px;
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-sm);
+    box-shadow: 0 8px 28px rgba(0,0,0,.14); display: none; padding: 4px;
+  }
+  .tab-chip-menu.open { display: block; }
+  .tab-chip-item {
+    display: flex; align-items: center; gap: 6px; padding: 8px 10px; font-size: 12.5px; font-weight: 600;
+    border-radius: 6px; cursor: pointer; color: var(--text-secondary); white-space: nowrap;
+  }
+  .tab-chip-item:hover  { background: var(--surface-2); }
+  .tab-chip-item.active { background: var(--accent-light); color: var(--accent-dark); }
+
   /* ══════════════════════════════════════════════════════
      القسم الموحّد — فلاتر + جدول (data-table-standard.md)
      منقول حرفيًا من templates/24_data-table-section.html
@@ -638,6 +708,8 @@
 
 <div class="container">
 
+  <div class="sticky-header-wrap" id="stickyWrap">
+
   <div class="app-header">
     <div class="app-title">
       <div class="app-icon">📋</div>
@@ -646,6 +718,13 @@
         <span>تسجيل الدفع على شوبيفاي بدون تحصيل فعلي <span class="header-badge">⏳ بانتظار التحصيل</span></span>
       </div>
     </div>
+
+    <!-- Chip التاب الحالي — بيظهر بس وقت الـ Sticky (شريط التابات بيتقفل) -->
+    <div class="active-tab-chip" id="activeTabChip" onclick="toggleTabChipMenu(event)">
+      <span id="activeTabChipLabel">📋 تسجيل الدفع</span><span class="chip-arrow">▾</span>
+      <div class="tab-chip-menu" id="tabChipMenu"></div>
+    </div>
+
     <div class="app-header-btns">
       <button class="hbtn active-user" id="activeUserBtn" onclick="doLogout()">👤 —</button>
       <button class="hbtn" id="verStaleBtn" style="display:none;border-color:var(--amber);color:var(--amber);background:var(--gold-bg);"
@@ -655,6 +734,17 @@
       <button class="hbtn" id="settingsBtn" onclick="openSettings()">⚙️ الإعدادات</button>
     </div>
   </div>
+
+  <div class="main-tabs-bar" id="mainTabsBar">
+    <button class="main-tab-btn active" id="tabMain" onclick="switchMainTab('main')">📋 تسجيل الدفع</button>
+    <button class="main-tab-btn"        id="tabLog"  onclick="switchMainTab('log')">📜 سجل العمليات</button>
+  </div>
+
+  </div>
+  <!-- /sticky-header-wrap -->
+
+  <!-- ══ PANEL: تسجيل الدفع ══ -->
+  <div class="tab-panel active" id="panelMain">
 
   <div class="tool-col">
 
@@ -747,6 +837,12 @@
 
   </div>
   <!-- /tool-col -->
+
+  </div>
+  <!-- /panelMain -->
+
+  <!-- ══ PANEL: سجل العمليات ══ -->
+  <div class="tab-panel" id="panelLog">
 
   <!-- ══════════════════════════════════════════════════════
        §LOG — سجل التسجيل المسبق (القسم الموحّد: فلاتر + جدول)
@@ -890,6 +986,9 @@
   </div>
   <!-- /§LOG -->
 
+  </div>
+  <!-- /panelLog -->
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════
@@ -976,6 +1075,7 @@
           <ul>
             <li><code>§AUTH-JS</code> — Universal D1 Auth (login بالـ PIN، 4 حالات)</li>
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
+            <li><code>§TABS-JS</code> — <code>switchMainTab</code> (lazy load للسجل) · <code>onPageScroll</code> بعتبتين + rAF · chip التاب الحالي</li>
             <li><code>§LOG-JS</code> — جدول السجل بالمعيار الموحّد: <code>msState</code> (فلتر الموظف) · <code>logParams()</code> (مصدر واحد للفلاتر) · <code>fetchLog()</code> (صفحة + عدّ بالتوازي) · <code>toggleSort</code> · <code>exportLogXLSX</code></li>
             <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
             <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
@@ -1023,7 +1123,19 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.2.1</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.3.0</span>
+          <span class="cl-ver-date">01-09-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span><b>السجل كان مكسور من v2.0.0</b> — حارس <code>orderId is required</code> في الـ Worker كان قبل endpoints السجل، فالتلاتة كانوا بيرجعوا 400 من غير ما يشوفوا الطلب. اتصلّح في Worker v2.4.0</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>نظام التابات — «📋 تسجيل الدفع» و«📜 سجل العمليات» في تابين منفصلين زي باقي الأدوات، والسجل بيتحمّل lazy أول ما تفتح تابه</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>Freeze on Scroll — الهيدر بيتقفل مضغوط مع السكرول وشريط التابات بيتحوّل لـ chip فيه قائمة تبديل</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.2.1</span>
           <span class="cl-ver-date">01-09-2026</span>
         </div>
         <ul class="cl-items">
@@ -1113,10 +1225,10 @@
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.2.1';
+  const TOOL_VERSION = '2.3.0';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
-  const MIN_WORKER_VERSION = '2.2.0';   // ضافت sortKey/sortDir وبيانات العميل
+  const MIN_WORKER_VERSION = '2.4.0';   // النسخة اللي فيها endpoints السجل شغّالة فعلاً
 
   // الرابط مش سر — ثابت هنا بدل حقل إعدادات (html-builder Standards #28)
   const WORKER_URL = 'https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev';
@@ -1541,6 +1653,78 @@
     _toastTimer = setTimeout(() => t.classList.remove('show'),
       duration || (type === 'error' ? 5000 : type === 'warn' ? 3000 : 1800));
   }
+
+
+  // ══════════════════════════════════════════════════════════════
+  // §TABS-JS — التابات الرئيسية + Freeze on Scroll
+  // (tabs-and-modals.md § 1 و § 1b)
+  // ══════════════════════════════════════════════════════════════
+  const TAB_IDS = ['main', 'log'];
+  let currentTab = 'main';
+
+  function switchMainTab(tab) {
+    currentTab = tab;
+    $('tabMain').classList.toggle('active', tab === 'main');
+    $('tabLog') .classList.toggle('active', tab === 'log');
+    $('panelMain').classList.toggle('active', tab === 'main');
+    $('panelLog') .classList.toggle('active', tab === 'log');
+    // lazy load — السجل ما بيتسحبش من D1 غير لما الموظف يفتح التاب فعلاً
+    if (tab === 'log' && !logLoadedOnce && currentEmployee) refreshLog();
+    if (tab === 'main') setTimeout(() => $('orderInput')?.focus(), 60);
+    updateTabChip();
+    closeTabChipMenu();
+  }
+
+  // ── Sticky/compact — عتبتان (Hysteresis) + rAF throttle ──────────
+  // ⚠️ ممنوع الرجوع لعتبة واحدة (toggle('stuck', y > N)) حتى بأرقام مختلفة —
+  // المشكلة في غياب الـ hysteresis والـ throttle مش في قيمة الرقم. العتبة
+  // الواحدة بتعمل فليكر عالق عند نقطة القفل (باج حقيقي، 30-08-2026).
+  const stickyWrap = $('stickyWrap');
+  const STICK_ON = 40, STICK_OFF = 12;
+  let stickyRafPending = false;
+  function onPageScroll() {
+    if (stickyRafPending) return;
+    stickyRafPending = true;
+    requestAnimationFrame(() => {
+      stickyRafPending = false;
+      const y = window.scrollY;
+      const isStuck = stickyWrap.classList.contains('stuck');
+      if (!isStuck && y > STICK_ON)      stickyWrap.classList.add('stuck');
+      else if (isStuck && y < STICK_OFF) stickyWrap.classList.remove('stuck');
+    });
+  }
+  window.addEventListener('scroll', onPageScroll, { passive: true });
+
+  // ── Chip التاب الحالي ───────────────────────────────────────────
+  function updateTabChip() {
+    const btn = $(currentTab === 'main' ? 'tabMain' : 'tabLog');
+    $('activeTabChipLabel').textContent = btn.textContent.trim();
+    document.querySelectorAll('#tabChipMenu .tab-chip-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.tab === currentTab);
+    });
+  }
+  function buildTabChipMenu() {
+    $('tabChipMenu').innerHTML = TAB_IDS.map(id => {
+      const btn = $(id === 'main' ? 'tabMain' : 'tabLog');
+      return `<div class="tab-chip-item ${id === currentTab ? 'active' : ''}" data-tab="${id}"
+        onclick="event.stopPropagation(); switchMainTab('${id}');">${esc(btn.textContent.trim())}</div>`;
+    }).join('');
+  }
+  function toggleTabChipMenu(e) {
+    e.stopPropagation();
+    const chip = $('activeTabChip'), menu = $('tabChipMenu');
+    const willOpen = !menu.classList.contains('open');
+    menu.classList.toggle('open', willOpen);
+    chip.classList.toggle('open', willOpen);
+  }
+  function closeTabChipMenu() {
+    $('tabChipMenu')?.classList.remove('open');
+    $('activeTabChip')?.classList.remove('open');
+  }
+  document.addEventListener('click', (e) => {
+    const chip = $('activeTabChip');
+    if (chip && !chip.contains(e.target)) closeTabChipMenu();
+  });
 
   // ══════════════════════════════════════════════════════════════
   // §LOG-JS — سجل D1 على المعيار الموحّد (data-table-standard.md)
@@ -2259,7 +2443,7 @@
     if (logged === false) showToast('⚠️ الدخول تم لكن ما اتسجلش في السجل', 'warn', 5000);
     setTimeout(() => $('orderInput')?.focus(), 100);
     checkWorkerVersion();
-    refreshLog();
+    // السجل بقى تاب مستقل — بيتحمّل lazy أول ما الموظف يفتحه (switchMainTab)
   }
 
   function doLogout() { showConfirm('تسجيل الخروج؟', performLogout); }
@@ -2273,6 +2457,7 @@
     $('orderInput').value = '';
     $('activeUserBtn').textContent = '👤 —';
     logRows = []; logTotalCount = 0; logCurrentPage = 1; logLoadedOnce = false;
+    switchMainTab('main');
     clearAllFilters();
     $('tblBody').innerHTML = '<tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض السجل</td></tr>';
     $('filteredCount').textContent = '—';
@@ -2311,6 +2496,8 @@
   renderChips();
   updateFilterIconState();
   updateSortHeaderUI();
+  buildTabChipMenu();
+  updateTabChip();
   checkWorkerVersion();
 </script>
 </body>
