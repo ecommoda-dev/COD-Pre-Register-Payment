@@ -24,6 +24,7 @@ binding = "PRE_REG_KV"
 id      = "aaeff3d84e2c4e87bc7cce6bfd83ce6b"
 
 # ─── Vars (نص عادي — مش أسرار) ────────────────────────
+
 [vars]
 SHOP_DOMAIN = "6c7e1a-53.myshopify.com"
 
