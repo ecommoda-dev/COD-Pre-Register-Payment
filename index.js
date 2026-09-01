@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.2.0 — بيانات العميل + ترتيب السجل server-side)
+ * cod-pre-register-payment-worker  (v2.3.0 — حذف endpoint الترحيل المؤقت)
  *
  * skills: ecommoda-worker-builder v2.0.0 · ecommoda-constants v1.4.3 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -18,7 +18,6 @@
  *   checkPending / clearPending / listPending — API لـ cod-payment-center-worker
  *   check_employee / register_pin / verify_employee / log_logout / get_employees — Universal D1 Auth
  *   get_logs / get_logs_count / get_logs_export — tool=cod_preregister
- *   import_pending_kv — مؤقت: لترحيل التسجيلات المعلّقة من KV القديم (ecommoda24)
  *   diag / get_config — فحص ذاتي + نسخة الـ Worker (إلزاميان لأي Worker بيكتب)
  *
  * D1: tool = 'cod_preregister' | type = 'preregister' / 'login' / 'logout'
@@ -28,7 +27,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.2.0';
+const WORKER_VERSION = '2.3.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -658,21 +657,10 @@ export default {
         return json({ success: true, entries }, 200, request);
       }
 
-      // ── ⚠️ import_pending_kv — مؤقت، لترحيل PRE_REG_KV من ecommoda24 ──
-      // بياخد { entries: [{key, value}] } زي ما هي من export_pending_kv
-      // بتاعة الأداة القديمة، ويكتبها في PRE_REG_KV الجديدة حرفيًا.
-      if (action === 'import_pending_kv') {
-        if (request.method !== 'POST') return json({ ok: false, error: 'POST required' }, 405, request);
-        const { entries } = bodyData;
-        if (!Array.isArray(entries)) return json({ ok: false, error: 'entries array required' }, 400, request);
-        let imported = 0;
-        for (const e of entries) {
-          if (!e.key || e.value === undefined) continue;
-          await env.PRE_REG_KV.put(e.key, typeof e.value === 'string' ? e.value : JSON.stringify(e.value));
-          imported++;
-        }
-        return json({ ok: true, imported }, 200, request);
-      }
+      // ⛔ endpoint الترحيل المؤقت `import_pending_kv` اتشال في v2.3.0 —
+      // كان بينقل مفاتيح PRE_REG_KV من حساب ecommoda24 المهجور، والترحيل خلص.
+      // أي endpoint ترحيل مؤقت منشور بعد ما يخلص غرضه = سطح هجوم بلا مقابل.
+      // لو احتجت ترحيل تاني يومًا، ارجع لنسخته في الـ git history (commit b3f7906).
 
       if (!numericId) return json({ error: 'orderId is required' }, 400, request);
 

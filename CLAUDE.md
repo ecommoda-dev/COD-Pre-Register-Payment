@@ -2,12 +2,12 @@
 
 # تسجيل الدفع المسبق — COD (`COD-Pre-Register-Payment`)
 
-![version](https://img.shields.io/badge/version-v1.2.0-blue)
+![version](https://img.shields.io/badge/version-v1.3.0-blue)
 
 **بتعمل إيه:** الموظف بيسجّل دفع أوردر COD مسبقًا على شوبيفاي (capture transaction)
 قبل التحصيل الفعلي من المندوب، وبيتحطّ مفتاح "معلّق" في KV لحد ما التحصيل يتم.
 **مين بيستخدمها:** حسابات · تحصيل COD
-**الإصدار:** Worker `v2.2.0` · الواجهة `v2.2.0`   ← الاتنين مستقلين، طبيعي يختلفوا
+**الإصدار:** Worker `v2.3.0` · الواجهة `v2.2.1`   ← الاتنين مستقلين، طبيعي يختلفوا
 
 ## الروابط
 
@@ -25,7 +25,6 @@
 | `preview` | بيانات الأوردر + هل مسجَّل مسبقًا في KV |
 | `preRegister` | capture على شوبيفاي + مفتاح KV + ميتافيلد + سجل D1 |
 | `checkPending` / `clearPending` / `listPending` | **API داخلي لـ `cod-payment-center-worker` — شكل الرد مقفول، ممنوع تغييره** |
-| `import_pending_kv` | ⚠️ **مؤقت** — ترحيل مفاتيح KV من `ecommoda24`. راجع «مسائل مفتوحة» |
 | `check_employee` / `register_pin` / `verify_employee` / `log_logout` / `get_employees` | Universal D1 Auth |
 | `get_logs` / `get_logs_count` / `get_logs_export` | سجل العمليات — فلترة (`employees` · `search` · `dateFrom`/`dateTo`) وترتيب (`sortKey`/`sortDir`) وصفحات، كلهم server-side. التصدير بيرجّع `cap`/`total`/`truncated` |
 | `diag` / `get_config` | فحص ذاتي + نسخة الـ Worker |
@@ -138,6 +137,8 @@ git show c26378c:Index.html
 نسخة ما قبل المراجعة الشاملة (Worker v2.0.0 · الواجهة v2.0.0): commit 872332a
 نسخة ما قبل جدول السجل     (Worker v2.1.0 · الواجهة v2.1.0): commit 31302a2
 git show 31302a2:index.html
+آخر نسخة فيها endpoint الترحيل import_pending_kv: commit b3f7906
+git show b3f7906:index.js
 ```
 
 ## بصمة المهارات
@@ -175,14 +176,10 @@ git show 31302a2:index.html
 
 ## مسائل مفتوحة
 
-- **`import_pending_kv` endpoint مؤقت لسه منشور.** معلَّم في الكود إنه لترحيل KV
-  من `ecommoda24`. **ملحوظة:** هو `KV.put` بمفتاح معلوم، يعني idempotent بطبيعته
-  — مش نفس خطورة `import_logs` اللي كتب 925 صف مكرر. برضه مرشّح للحذف فور تأكيد
-  إن الترحيل خلص (`ecommoda-constants` §11 بند 13).
 - **Build watch paths لسه `*` (الافتراضي)** — أي تعديل واجهة بينشر الـ Worker
   تاني بنفس الكود. التضييق على `index.js` + `wrangler.toml`
   (`ecommoda-tool-migration-playbook` §13-ب) اختياري ولسه ما اتعملش.
 
-آخر تحديث: 01-09-2026 — 16:10
+آخر تحديث: 01-09-2026 — 17:05
 
 </div>

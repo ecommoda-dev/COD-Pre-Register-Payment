@@ -957,7 +957,6 @@
             <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
             <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
             <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
-            <tr><td><code>import_pending_kv</code></td><td>⚠️ مؤقت — ترحيل مفاتيح KV من حساب <code>ecommoda24</code> المهجور</td></tr>
           </table>
 
           <h4>نتيجة التسجيل — ٣ حالات</h4>
@@ -1024,7 +1023,17 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.2.0</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.2.1</span>
+          <span class="cl-ver-date">01-09-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>endpoint الترحيل المؤقت <code>import_pending_kv</code> اتشال من الـ Worker (v2.3.0) — الترحيل من حساب <code>ecommoda24</code> خلص من زمان</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.2.0</span>
           <span class="cl-ver-date">01-09-2026</span>
         </div>
         <ul class="cl-items">
@@ -1104,7 +1113,7 @@
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.2.0';
+  const TOOL_VERSION = '2.2.1';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
   const MIN_WORKER_VERSION = '2.2.0';   // ضافت sortKey/sortDir وبيانات العميل
