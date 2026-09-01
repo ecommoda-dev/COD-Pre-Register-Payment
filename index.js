@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.1.0 — تصليب عقد النداءات الخارجية)
+ * cod-pre-register-payment-worker  (v2.2.0 — بيانات العميل + ترتيب السجل server-side)
  *
  * skills: ecommoda-worker-builder v2.0.0 · ecommoda-constants v1.4.3 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -13,7 +13,7 @@
  *
  * Actions:
  *   resolveByName  – order number → numeric ID
- *   preview        – fetch order data + check KV for existing pre-registration
+ *   preview        – fetch order data (+ بيانات العميل للعرض فقط) + فحص KV
  *   preRegister    – mark as paid on Shopify + save KV + set metafield + D1 log
  *   checkPending / clearPending / listPending — API لـ cod-payment-center-worker
  *   check_employee / register_pin / verify_employee / log_logout / get_employees — Universal D1 Auth
@@ -28,7 +28,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.1.0';
+const WORKER_VERSION = '2.2.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -163,9 +163,25 @@ function buildLogFilterSQL(select, {
   return { sql, b };
 }
 
-async function getLogs(db, { limit = 100, offset = 0, ...filters } = {}) {
+// ⚠️ whitelist إجباري — الترتيب بيتحقن في SQL، فأي قيمة من المستخدم ممنوعة.
+// الأعمدة اللي مش في الجدول (المندوب مثلاً — جوه extra JSON) مش قابلة للترتيب
+// server-side، وعشان كده مش موجودة هنا ولا `sortable-th` في الواجهة.
+const LOG_SORT_COLUMNS = {
+  timestamp:   'timestamp',
+  employee:    'employee',
+  order_name:  'order_name',
+  value_after: 'value_after',
+};
+
+/**
+ * الترتيب server-side مش client-side — السجل مقسّم صفحات، والترتيب على
+ * الصفحة المعروضة بس بيدّي ترتيب كذّاب (الصف الأكبر ممكن يكون في صفحة تانية).
+ */
+async function getLogs(db, { limit = 100, offset = 0, sortKey = null, sortDir = 'desc', ...filters } = {}) {
   const { sql, b } = buildLogFilterSQL('SELECT *', filters);
-  const q = sql + ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+  const col = LOG_SORT_COLUMNS[sortKey] || 'timestamp';
+  const dir = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+  const q = `${sql} ORDER BY ${col} ${dir}, timestamp DESC LIMIT ? OFFSET ?`;
   return (await db.prepare(q)
     .bind(...b, Math.min(limit, 100), Math.max(offset, 0)).all()).results;
 }
@@ -201,6 +217,7 @@ function logParamsFrom(url, tool) {
     employees: employees.length ? employees : null,
     employee:  url.searchParams.get('employee') || null,
     types:     types.length ? types : null,
+    // ملحوظة: sortKey/sortDir مش فلاتر — بيتقروا في get_logs لوحدها
     type:      url.searchParams.get('type')     || null,
     search:    url.searchParams.get('search')   || null,
     dateFrom:  url.searchParams.get('dateFrom') || null,
@@ -327,6 +344,9 @@ async function getOrderDataById(env, numericId) {
     query getOrderById($id: ID!) {
       order(id: $id) {
         id name canMarkAsPaid displayFinancialStatus
+        phone
+        customer { displayName phone }
+        shippingAddress { name phone }
         totalOutstandingSet { shopMoney { amount } }
         subtotalPriceSet    { shopMoney { amount } }
         shippingLine { originalPriceSet { shopMoney { amount } } }
@@ -352,6 +372,12 @@ async function getOrderDataById(env, numericId) {
   const canMarkAsPaid  = order.canMarkAsPaid;
   const financialStatus = order.displayFinancialStatus;
   const courier        = order.courierMeta?.value || null;
+
+  // بيانات العميل — للعرض في الواجهة **بس**. ⛔ ممنوع تدخل writeLog أو extra:
+  // السجل بيتصدّر XLSX وبيتقرا من أدوات تانية، والبيانات دي شخصية.
+  // محتاجة صلاحية read_customers على تطبيق شوبيفاي (اتأكد بـ ?action=diag).
+  const customerName  = order.customer?.displayName || order.shippingAddress?.name  || null;
+  const customerPhone = order.shippingAddress?.phone || order.customer?.phone || order.phone || null;
 
   const lineItems = (order.lineItems?.nodes || [])
     .filter(li => li.sku && li.currentQuantity > 0)
@@ -379,6 +405,8 @@ async function getOrderDataById(env, numericId) {
     skipReason,
     financialStatus,
     courier,
+    customerName,
+    customerPhone,
     lineItems,
   };
 }
@@ -515,7 +543,7 @@ export default {
             const d = await shopifyGQL(env, token,
               `{ currentAppInstallation { accessScopes { handle } } }`, {}, 'diagScopes');
             scopes = (d?.data?.currentAppInstallation?.accessScopes || []).map(x => x.handle);
-            const needed = ['read_orders', 'write_orders'];
+            const needed = ['read_orders', 'write_orders', 'read_customers'];
             const miss   = needed.filter(x => !scopes.includes(x));
             checks.push({
               name: 'Shopify scopes',
@@ -667,6 +695,8 @@ export default {
           skipReason:            orderData.skipReason || null,
           financialStatus:       orderData.financialStatus,
           courier:               orderData.courier,
+          customerName:          orderData.customerName,
+          customerPhone:         orderData.customerPhone,
           lineItems:             orderData.lineItems,
           alreadyPreRegistered:  !!existing,
           registeredAt:          existing ? JSON.parse(existing).preRegisteredAt : null,
@@ -773,7 +803,11 @@ export default {
         const p      = logParamsFrom(url, TOOL_NAME);
         const limit  = Math.min(parseInt(url.searchParams.get('limit')  || '100'), 100);
         const offset = Math.max(parseInt(url.searchParams.get('offset') || '0'),    0);
-        const entries = await getLogs(env.DB, { ...p, limit, offset });
+        const entries = await getLogs(env.DB, {
+          ...p, limit, offset,
+          sortKey: url.searchParams.get('sortKey') || null,
+          sortDir: url.searchParams.get('sortDir') || 'desc',
+        });
         return json({ ok: true, entries }, 200, request);
       }
 
