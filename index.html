@@ -2,9 +2,11 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
+<!-- skills: ecommoda-html-builder v5.0.0 · ecommoda-constants v1.4.3 · ecommoda-worker-builder v2.0.0 — 01-09-2026 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pre-Register Payment — COD</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <style>
   :root {
     --bg: #f4f5f7;
@@ -42,9 +44,11 @@
     --pink: #be185d;
     --scanner: #0891b2;
     --neutral: #374151;
-    --font: 'IBM Plex Sans Arabic', sans-serif;
-    --mono: 'JetBrains Mono', monospace;
-    --font-mono: 'JetBrains Mono', monospace;
+    /* خط واحد لكل الحالات — IBM Plex Mono/JetBrains أُلغيا (html-builder قاعدة 11).
+       --mono و --font-mono باقيان بنفس القيمة عشان الكلاسات القديمة تفضل شغالة. */
+    --font: 'Noto Sans Arabic', sans-serif;
+    --mono: 'Noto Sans Arabic', sans-serif;
+    --font-mono: 'Noto Sans Arabic', sans-serif;
     --container-max: 700px;
     --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
     --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
@@ -53,7 +57,7 @@
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'IBM Plex Sans Arabic', sans-serif;
+    font-family: 'Noto Sans Arabic', sans-serif;
     background: var(--bg);
     color: var(--text);
     min-height: 100vh;
@@ -100,14 +104,14 @@
     display: flex; align-items: center; justify-content: center;
     background: var(--bg-input); border: 1px solid var(--border);
     border-radius: 10px 0 0 10px; padding: 0 0.75rem;
-    font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+    font-family: var(--mono); font-size: 1rem;
     color: var(--text-dim); font-weight: 700; flex-shrink: 0;
     border-right: none;
   }
   .order-input {
     flex: 1; background: var(--bg-input); border: 1px solid var(--border);
     border-radius: 0 10px 10px 0; padding: 0.85rem 1rem;
-    color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 1rem;
+    color: var(--text); font-family: var(--mono); font-size: 1rem;
     font-weight: 600; outline: none; direction: ltr;
     transition: border-color 0.2s, box-shadow 0.2s;
   }
@@ -136,10 +140,10 @@
     background: #fff;
   }
   .order-name {
-    font-family: 'JetBrains Mono', monospace; font-size: 1.05rem;
+    font-family: var(--mono); font-size: 1.05rem;
     font-weight: 700; color: var(--purple);
   }
-  .order-financial { font-size: 0.75rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+  .order-financial { font-size: 0.75rem; color: var(--text-dim); font-family: var(--mono); }
 
   /* ── Customer info box ── */
   .customer-box {
@@ -149,14 +153,14 @@
   .customer-row { display: flex; gap: 1.5rem; flex-wrap: wrap; }
   .customer-field { display: flex; align-items: center; gap: 0.4rem; font-size: 0.82rem; }
   .customer-label { color: var(--text-dim); font-size: 0.75rem; font-weight: 600; }
-  .customer-value { color: var(--text); font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+  .customer-value { color: var(--text); font-weight: 600; font-family: var(--mono); }
   .customer-value.phone { direction: ltr; }
 
   .order-card-body { padding: 0.85rem 1rem; }
   .order-amounts { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
   .amount-item { flex: 1; min-width: 100px; }
   .amount-label { font-size: 0.7rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
-  .amount-value { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 700; color: var(--text); direction: ltr; }
+  .amount-value { font-family: var(--mono); font-size: 0.95rem; font-weight: 700; color: var(--text); direction: ltr; }
   .amount-value.highlight { color: var(--purple); font-size: 1.05rem; }
 
   .courier-row { display: flex; align-items: center; gap: 0.5rem; }
@@ -168,7 +172,7 @@
   .sku-label { font-size: 0.7rem; color: var(--text-dim); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
   .sku-table { width: 100%; border-collapse: collapse; direction: rtl; }
   .sku-table th {
-    padding: 0.25rem 0.4rem; font-family: 'JetBrains Mono', monospace;
+    padding: 0.25rem 0.4rem; font-family: var(--mono);
     font-size: 0.64rem; font-weight: 700; color: var(--text-dim);
     text-transform: uppercase; letter-spacing: 0.03em;
     border-bottom: 1px solid var(--border); text-align: right;
@@ -176,7 +180,7 @@
   }
   .sku-table th.th-qty   { text-align: center; }
   .sku-table th.th-money { text-align: left; }
-  .sku-table td { padding: 0.25rem 0.4rem; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; }
+  .sku-table td { padding: 0.25rem 0.4rem; font-family: var(--mono); font-size: 0.75rem; }
   .sku-table .td-sku   { color: var(--scanner); font-weight: 700; }
   .sku-table .td-qty   { color: var(--text-dim); text-align: center; }
   .sku-table .td-money { color: var(--gold); font-weight: 700; text-align: left; direction: ltr; }
@@ -211,16 +215,43 @@
   .result-box { border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 1rem; display: none; }
   .result-box.success { display: block; background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success); }
   .result-box.error   { display: block; background: var(--error-bg);   border: 1px solid var(--error-border);   color: var(--error); }
+  /* الحالة التالتة — الفعل الأساسي تم بس فيه حاجة ما اتأكدتش. ممنوع تتحسب نجاح. */
+  .result-box.warning { display: block; background: var(--gold-bg);    border: 1px solid #fde68a;               color: var(--gold); }
   .result-title  { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.2rem; }
-  .result-detail { font-size: 0.8rem; opacity: 0.85; font-family: 'JetBrains Mono', monospace; }
+  .result-detail { font-size: 0.8rem; opacity: 0.85; font-family: var(--mono); }
+  .result-actions { margin-top: 0.6rem; font-size: 0.78rem; line-height: 1.8; opacity: .95; }
+  .result-actions b { display: block; margin-bottom: 0.15rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; opacity: .8; }
+  .result-actions ul { margin: 0; padding-inline-start: 1.1rem; }
+
+  /* ── رقم الأوردر = هايبر لينك لشوبيفاي ── */
+  .order-link { color: var(--purple); font-family: var(--mono); font-weight: 700; text-decoration: none; border-bottom: 1px dashed var(--purple-border); }
+  .order-link:hover { border-bottom-style: solid; }
+  .order-num  { font-family: var(--mono); font-weight: 700; }
+
+  /* ── بانر التصدير المقصوص — ثابت فوق السجل، مش توست بيختفي ── */
+  .export-warn {
+    margin: 0 0 12px; padding: 10px 14px; border-radius: 9px;
+    background: var(--gold-bg); border: 1px solid var(--gold);
+    color: var(--gold); font-size: 13px; font-weight: 600; line-height: 1.7;
+  }
+
+  /* ── نص النسخة تحت زرار إعدادات اللوجن ── */
+  .login-version { position: absolute; top: 58px; left: 18px; font-size: 11px; font-weight: 700; color: var(--text-muted); font-family: var(--mono); }
+
+  /* ── الفحص الذاتي في الإعدادات ── */
+  .diag-line { display: flex; gap: 6px; align-items: flex-start; padding: 3px 0; }
+  .diag-line .d-ic { flex-shrink: 0; }
+  .diag-line .d-nm { font-weight: 700; min-width: 128px; }
+  .diag-line .d-in { color: var(--text-secondary); word-break: break-word; }
 
   /* ── Toast ── */
   .toast {
     position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
     background: var(--purple); color: #fff; padding: 0.5rem 1.2rem;
     border-radius: 20px; font-size: 0.82rem; font-weight: 700;
-    opacity: 0; transition: opacity 0.25s; z-index: 100; pointer-events: none;
-    font-family: 'JetBrains Mono', monospace; box-shadow: var(--shadow-md);
+    max-width: min(92vw, 560px); text-align: center; line-height: 1.6;
+    opacity: 0; transition: opacity 0.25s; z-index: 9999; pointer-events: none;
+    font-family: var(--mono); box-shadow: var(--shadow-md);
   }
   .toast.show { opacity: 1; }
 
@@ -231,7 +262,7 @@
   .input-group input {
     width: 100%; background: var(--bg-input); border: 1px solid var(--border);
     border-radius: 10px; padding: 0.75rem 1rem; color: var(--text);
-    font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;
+    font-family: var(--mono); font-size: 0.85rem;
     outline: none; transition: border-color 0.2s; direction: ltr;
   }
   .input-group input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
@@ -280,7 +311,7 @@
     padding: 0.75rem 1rem; cursor: pointer; gap: 0.5rem;
   }
   .log-entry-info { flex: 1; min-width: 0; }
-  .log-entry-date { font-family: 'JetBrains Mono', monospace; font-size: 0.73rem; color: var(--text-dim); margin-bottom: 0.3rem; }
+  .log-entry-date { font-family: var(--mono); font-size: 0.73rem; color: var(--text-dim); margin-bottom: 0.3rem; }
   .log-entry-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
   .log-tag {
     padding: 0.15rem 0.55rem; border-radius: 20px;
@@ -301,10 +332,10 @@
     padding: 0.5rem 1rem; font-size: 0.8rem; border-bottom: 1px solid var(--border);
   }
   .log-detail-row:last-child { border-bottom: none; }
-  .log-detail-name { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text); }
+  .log-detail-name { font-family: var(--mono); font-weight: 600; color: var(--text); }
   .log-detail-courier { font-size: 0.72rem; color: var(--pink); font-weight: 600; margin-right: 0.4rem; }
   .log-detail-id { font-size: 0.7rem; color: var(--text-dim); margin-right: 0.3rem; }
-  .log-detail-amt { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--gold); font-weight: 700; }
+  .log-detail-amt { font-family: var(--mono); font-size: 0.78rem; color: var(--gold); font-weight: 700; }
 
   .log-sync-status { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: 700; }
   .log-sync-status.synced  { color: var(--success); background: var(--success-bg); border: 1px solid var(--success-border); }
@@ -449,6 +480,7 @@
 <div class="login-overlay" id="loginOverlay">
   <div class="login-card">
     <button class="login-settings-btn missing" id="loginSettingsBtn" onclick="openSettings()">⚙️ الإعدادات</button>
+    <div class="login-version" id="loginVersionText"></div>
     <div class="login-top">
       <div class="login-icon">📋</div>
       <div class="login-title">Pre-Register Payment</div>
@@ -505,8 +537,10 @@
     </div>
     <div class="app-header-btns">
       <button class="hbtn active-user" id="activeUserBtn" onclick="doLogout()">👤 —</button>
+      <button class="hbtn" id="verStaleBtn" style="display:none;border-color:var(--amber);color:var(--amber);background:var(--gold-bg);"
+              onclick="showWorkerStale()">⚠️ الـ Worker نسخة قديمة</button>
       <button class="hbtn" id="aboutBtn" onclick="openAbout()">ℹ️ عن الأداة</button>
-      <button class="hbtn ver-btn" onclick="openChangelog()">v2.0.0 📋</button>
+      <button class="hbtn ver-btn" id="verBtn" onclick="openChangelog()">📋</button>
       <button class="hbtn" id="settingsBtn" onclick="openSettings()">⚙️ الإعدادات</button>
     </div>
   </div>
@@ -595,6 +629,7 @@
   <div class="result-box" id="resultBox">
     <div class="result-title"  id="resultTitle"></div>
     <div class="result-detail" id="resultDetail"></div>
+    <div class="result-actions" id="resultActions" style="display:none;"></div>
   </div>
 
   <!-- Log -->
@@ -602,9 +637,11 @@
     <div class="log-header">
       <h2>📋 سجل التسجيل المسبق <span class="log-sync-status synced" id="logSyncStatus">D1</span></h2>
       <div class="log-actions">
+        <button class="log-btn" onclick="exportLogXLSX()" title="تصدير XLSX">⬇️</button>
         <button class="log-btn" onclick="refreshLog()" title="تحديث من D1">🔄</button>
       </div>
     </div>
+    <div id="logExportWarn" class="export-warn" style="display:none;"></div>
     <div class="log-list" id="logList">
       <div class="log-empty">اضغط تحديث لعرض السجل</div>
     </div>
@@ -622,17 +659,16 @@
       <button class="modal-close-x" onclick="closeSettings()">✕</button>
     </div>
     <div class="settings-modal-body">
-      <div class="settings-field">
-        <label class="settings-label">WORKER URL</label>
-        <input type="text" class="settings-input" id="cfgUrl">
-      </div>
+      <!-- WORKER URL و ADMIN WORKER URL اتشالوا — قيمتهم ثابتة في §CONFIG.
+           الرابط مش سر: الحماية في WORKER_SECRET + CORS allowlist. -->
       <div class="settings-field">
         <label class="settings-label">WORKER SECRET</label>
         <input type="password" class="settings-input" id="cfgSecret">
       </div>
-      <div class="settings-field">
-        <label class="settings-label">ADMIN WORKER URL</label>
-        <input type="text" class="settings-input" id="cfgAdminUrl">
+      <div class="settings-field" style="border-top:1.5px solid var(--border);padding-top:12px;margin-top:4px;">
+        <label class="settings-label">فحص النظام</label>
+        <button class="hbtn" id="diagBtn" onclick="runDiag()">🩺 افحص الأداة والاتصالات</button>
+        <div id="diagResult" style="margin-top:10px;font-size:12px;line-height:1.7;"></div>
       </div>
     </div>
     <div class="settings-modal-ftr">
@@ -675,6 +711,18 @@
             <tr><td><code>preRegister</code></td><td>تسجيل الدفع + KV + ميتافيلد + D1</td></tr>
             <tr><td><code>checkPending / clearPending / listPending</code></td><td>API داخلي لـ cod-payment-center-worker</td></tr>
             <tr><td><code>get_logs / get_logs_count</code></td><td>سجل التسجيلات (tool=cod_preregister)</td></tr>
+            <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
+            <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
+            <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
+            <tr><td><code>import_pending_kv</code></td><td>⚠️ مؤقت — ترحيل مفاتيح KV من حساب <code>ecommoda24</code> المهجور</td></tr>
+          </table>
+
+          <h4>نتيجة التسجيل — ٣ حالات</h4>
+          <table>
+            <tr><th>الحالة</th><th>معناها</th></tr>
+            <tr><td>✅ تم</td><td>الفلوس اتسجّلت + حالة "معلّق" + الميتافيلد + السجل — كلهم تمّوا</td></tr>
+            <tr><td>⚠ تم جزئيًا</td><td>الفلوس اتسجّلت على شوبيفاي بس خطوة تابعة فشلت. <b>ممنوع تتحسب نجاح</b> — التفاصيل تحت البادج</td></tr>
+            <tr><td>✗ فشل</td><td>الـ capture نفسه ما تمّش — مفيش أي أثر على شوبيفاي</td></tr>
           </table>
         </div>
       </details>
@@ -686,20 +734,28 @@
           <ul>
             <li><code>§AUTH-JS</code> — Universal D1 Auth (login بالـ PIN، 4 حالات)</li>
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
-            <li><code>§LOG-JS</code> — سجل D1 مع pagination (تحميل المزيد)</li>
+            <li><code>§LOG-JS</code> — سجل D1 مع pagination (تحميل المزيد) + تصدير XLSX عبر ExcelJS</li>
+            <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
+            <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
           </ul>
 
           <h4>KEY VARIABLES</h4>
           <ul>
             <li><code>currentEmployee</code> — في الذاكرة فقط، مش localStorage</li>
             <li><code>TOOL_NAME = 'cod_preregister'</code> — قيمة tool في جدول logs (Worker-side)</li>
-            <li><code>LS_URL / LS_SECRET</code> — <code>prereg_worker_url</code> / <code>prereg_worker_secret</code></li>
+            <li><code>TOOL_VERSION</code> — مصدر واحد لرقم نسخة الواجهة (الهيدر + بادج الـ Changelog + شاشة اللوجن)</li>
+            <li><code>MIN_WORKER_VERSION</code> — أقل نسخة Worker مقبولة. <b>مالهاش علاقة بـ <code>TOOL_VERSION</code></b> — متزامنهمش</li>
+            <li><code>WORKER_URL</code> — ثابت في الكود، مش حقل إعدادات ولا localStorage</li>
+            <li><code>LS_SECRET = 'prereg_worker_secret'</code> — المفتاح الوحيد في localStorage</li>
           </ul>
 
           <h4>NOTES</h4>
           <ul>
-            <li>بيانات العميل (الاسم/التليفون) تُعرض بس، ومش بتتسجل في D1 نهائيًا — خصوصية متعمّدة.</li>
             <li>الـ KV (<code>PRE_REG_KV</code>) بيمثّل حالة "معلّق" مؤقتة، مش سجل دائم — السجل الدائم في D1.</li>
+            <li><b>مفاتيح بوسطة في <code>PRE_REG_KV</code> مش بقايا — دي backlog. ممنوع حذفها</b> (ecommoda-constants §11 بند 14).</li>
+            <li>ترتيب <code>preRegister</code> مقصود: الفلوس الأول، وبعدها KV والميتافيلد وD1 — التلاتة دول فشلهم بيدّي <b>⚠ تم جزئيًا</b> مش فشل كامل.</li>
+            <li>بيانات العميل (الاسم/التليفون): الواجهة جاهزة لعرضها لو الـ Worker بعتها، لكن <code>preview</code> <b>مش بيرجّعها حاليًا</b> — الصندوق بيفضل مخفي. إضافتها محتاجة صلاحية <code>read_customers</code> على تطبيق شوبيفاي، وقرار صريح لأنها بيانات شخصية.</li>
+            <li>الوقت كله بتوقيت القاهرة (UTC+3) عبر <code>toCairo()</code> — مش توقيت جهاز الموظف.</li>
           </ul>
         </div>
       </details>
@@ -721,7 +777,25 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge">v2.0.0</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.1.0</span>
+          <span class="cl-ver-date">01-09-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span>الـ toast كان <code>z-index:100</code> تحت شاشة الدخول (500) — أي رسالة خطأ وقت اللوجن كانت مخفية تمامًا</span></li>
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span>نتيجة التسجيل بقت ٣ حالات (تم / تم جزئيًا / فشل) مع سطر «اللي تم فعليًا» — الأخضر كان بيظهر حتى لو الميتافيلد أو السجل أو حالة «معلّق» فشلوا</span></li>
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span>هروب HTML لكل نص جاي من شوبيفاي/D1 (SKU · مندوب · موظف) قبل عرضه</span></li>
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span>التاريخ والوقت بقوا بتوقيت القاهرة صراحةً بدل توقيت جهاز الموظف</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>تصدير السجل XLSX + بانر تحذير لو التصدير اتقص عند سقف الـ Worker</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>زرار 🩺 فحص النظام في الإعدادات + حارس نسخة الـ Worker في الهيدر</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>رقم الأوردر بقى هايبر لينك لصفحته على شوبيفاي</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>WORKER URL و ADMIN WORKER URL اتشالوا من الإعدادات — الرابط ثابت في الكود، والـ Secret بس هو اللي بيتدخّل</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>خط موحّد Noto Sans Arabic بدل خطين</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.0.0</span>
           <span class="cl-ver-date">15-08-2026</span>
         </div>
         <ul class="cl-items">
@@ -768,45 +842,69 @@
   // ══════════════════════════════════════════════════════════════
   // CONFIG
   // ══════════════════════════════════════════════════════════════
-  const LS_URL       = 'prereg_worker_url';
-  const LS_SECRET    = 'prereg_worker_secret';
-  const LS_ADMIN_URL = 'admin_worker_url'; // مشترك بين كل الأدوات — ميتغيرش اسمه
+  // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
+  const TOOL_VERSION = '2.1.0';
+  // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
+  // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
+  const MIN_WORKER_VERSION = '2.1.0';
+
+  // الرابط مش سر — ثابت هنا بدل حقل إعدادات (html-builder Standards #28)
+  const WORKER_URL = 'https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev';
+  const LS_SECRET  = 'prereg_worker_secret';   // السر الوحيد اللي بيتخزّن
 
   function getConfig() {
     return {
-      workerUrl:    localStorage.getItem(LS_URL)       || '',
-      workerSecret: localStorage.getItem(LS_SECRET)    || '',
-      adminUrl:     localStorage.getItem(LS_ADMIN_URL) || '',
+      workerUrl:    WORKER_URL.replace(/\/$/, ''),
+      workerSecret: localStorage.getItem(LS_SECRET) || '',
     };
   }
   function isConfigured() {
-    const c = getConfig();
-    return c.workerUrl.startsWith('http') && c.workerSecret.length > 0;
+    return getConfig().workerSecret.length > 0;
+  }
+
+  // مقارنة رقمية — مش نصية. "10" أصغر من "9" لو اتقارنوا كنص.
+  function cmpVersion(a, b) {
+    const pa = String(a).replace(/^v/, '').split('.').map(Number);
+    const pb = String(b).replace(/^v/, '').split('.').map(Number);
+    for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+    return 0;
+  }
+
+  // hardening: أي نص جاي من شوبيفاي/D1 (SKU · اسم مندوب · اسم موظف) بيتعرض
+  // عبر innerHTML — من غير الهروب دي حقنة HTML مباشرة.
+  function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, c =>
+      ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+
+  // رقم الأوردر = هايبر لينك لشوبيفاي by default (html-builder قاعدة 20)
+  const SHOP_ADMIN = 'https://admin.shopify.com/store/6c7e1a-53';
+  function orderLink(orderName, orderId) {
+    const label = esc(orderName || (orderId ? '#' + orderId : '—'));
+    if (!orderId) return `<span class="order-num">${label}</span>`;
+    return `<a class="order-link" href="${SHOP_ADMIN}/orders/${encodeURIComponent(orderId)}"
+              target="_blank" rel="noopener">${label}</a>`;
   }
 
   function openSettings() {
-    const c = getConfig();
-    $('cfgUrl').value      = c.workerUrl;
-    $('cfgSecret').value   = c.workerSecret;
-    $('cfgAdminUrl').value = c.adminUrl;
+    $('cfgSecret').value = getConfig().workerSecret;
+    $('diagResult').innerHTML = '';
     $('settingsOverlay').classList.add('open');
   }
   function closeSettings() { $('settingsOverlay').classList.remove('open'); }
   function closeSettingsOnBackdrop(e) { if (e.target === e.currentTarget) closeSettings(); }
   function saveSettings() {
-    const url    = $('cfgUrl').value.trim();
     const secret = $('cfgSecret').value.trim();
-    if (!url || !secret) { showToast('الرجاء إدخال الـ URL والـ Secret', 'error'); return; }
+    if (!secret) { showToast('الرجاء إدخال الـ Worker Secret', 'error'); return; }
 
-    localStorage.setItem(LS_URL,       url.replace(/\/$/, ''));
-    localStorage.setItem(LS_SECRET,    secret);
-    localStorage.setItem(LS_ADMIN_URL, ($('cfgAdminUrl').value.trim()).replace(/\/$/, ''));
+    localStorage.setItem(LS_SECRET, secret);
 
     updateSettingsBtn();
-    updateLoginSettingsBtnState();
+    updateLoginSettingsBtn();
     closeSettings();
     showToast('تم حفظ الإعدادات ✓', 'success');
     loadEmployeesList();
+    checkWorkerVersion();
   }
   function updateSettingsBtn() {
     $('settingsBtn').classList.toggle('settings-configured', isConfigured());
@@ -836,26 +934,83 @@
   // ══════════════════════════════════════════════════════════════
   // API HELPERS — نفس النمط الموحّد في كل الأدوات
   // ══════════════════════════════════════════════════════════════
-  async function apiPost(action, body = {}) {
-    if (!isConfigured()) { openSettings(); throw new Error('الإعدادات غير مكتملة'); }
+  // الطبقة اللي بتفرّق أنواع الفشل. `await resp.json()` المباشرة كانت بتخلط
+  // تلاتة في رسالة واحدة غامضة: الـ Worker رد بخطأ · الشبكة/CORS رافضة ·
+  // الرد مش JSON أصلاً (صفحة خطأ HTML مثلاً).
+  async function apiRequest(action, { method = 'GET', body = null, params = {} } = {}) {
+    if (!isConfigured()) { openSettings(); throw new Error('الإعدادات غير مكتملة — افتح الإعدادات وأدخل الـ Secret'); }
     const { workerUrl, workerSecret } = getConfig();
-    const resp = await fetch(`${workerUrl.replace(/\/$/, '')}?action=${action}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${workerSecret}` },
-      body: JSON.stringify(body),
-    });
-    const data = await resp.json();
+    const qs  = new URLSearchParams({ action, ...params });
+    const url = `${workerUrl}?${qs}`;
+
+    let resp;
+    try {
+      resp = await fetch(url, {
+        method,
+        headers: Object.assign({ 'Authorization': `Bearer ${workerSecret}` },
+                               body ? { 'Content-Type': 'application/json' } : {}),
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (e) {
+      throw new Error('تعذّر الوصول للـ Worker (شبكة أو CORS) — ' + e.message);
+    }
+
+    const text = await resp.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch {
+      throw new Error(`رد الـ Worker مش JSON (HTTP ${resp.status}) — ${text.slice(0, 140)}`);
+    }
+
+    if (resp.status === 401) throw new Error('Unauthorized — الـ Worker Secret غلط أو النسخة محتاجة Promote');
     if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
     return data;
   }
-  async function apiGet(action, params = {}) {
-    if (!isConfigured()) { openSettings(); throw new Error('الإعدادات غير مكتملة'); }
-    const { workerUrl, workerSecret } = getConfig();
-    const qs = new URLSearchParams({ action, ...params });
-    const resp = await fetch(`${workerUrl.replace(/\/$/, '')}?${qs}`, { headers: { 'Authorization': `Bearer ${workerSecret}` } });
-    const data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || `HTTP ${resp.status}`);
-    return data;
+
+  const apiPost = (action, body = {}) => apiRequest(action, { method: 'POST', body });
+  const apiGet  = (action, params = {}) => apiRequest(action, { method: 'GET', params });
+
+  // ── نسخة الـ Worker: حد أدنى مش تطابق ──────────────────────────
+  // الصفحة والـ Worker رقمين مستقلين واختلافهم طبيعي — المقارنة بالتطابق
+  // بتولّع تحذير كاذب دايم، والتحذير الكاذب الدايم بيتعوّد عليه الموظف.
+  let workerVersion = null;
+  async function checkWorkerVersion() {
+    try {
+      const d = await apiGet('get_config');
+      workerVersion = d.version || null;
+      const stale = workerVersion && cmpVersion(workerVersion, MIN_WORKER_VERSION) < 0;
+      $('verStaleBtn').style.display = stale ? '' : 'none';
+    } catch { /* الإعدادات ممكن تكون لسه مش مضبوطة */ }
+  }
+  function showWorkerStale() {
+    showToast(`الـ Worker نسخته ${workerVersion} والواجهة محتاجة ${MIN_WORKER_VERSION} على الأقل — `
+      + `التحديث على ما يبدو ما نزلش. راجع Deployments و Promote في كلاودفلير.`, 'error', 7000);
+  }
+
+  // ── الفحص الذاتي — ممنوع يعرض قيمة أي سر ────────────────────────
+  async function runDiag() {
+    const box = $('diagResult');
+    box.innerHTML = '<span style="color:var(--text-secondary)">⏳ جاري الفحص...</span>';
+    try {
+      const d = await apiGet('diag');
+      const line = (ok, nm, info) =>
+        `<div class="diag-line"><span class="d-ic">${ok ? '✅' : '❌'}</span>`
+        + `<span class="d-nm">${esc(nm)}</span><span class="d-in">${esc(info)}</span></div>`;
+      let html = line(true, 'Worker version', d.version || '—');
+      html += line(!!d.originAllowed, 'CORS origin', `${d.origin} — ${d.originAllowed ? 'مسموح' : 'غير مسموح'}`);
+      (d.checks || []).forEach(c => { html += line(c.ok, c.name, c.info); });
+      box.innerHTML = html;
+    } catch (err) {
+      box.innerHTML = `<div class="diag-line"><span class="d-ic">❌</span>`
+        + `<span class="d-in" style="color:var(--red)">${esc(err.message)}</span></div>`;
+    }
+  }
+
+  // ── مصدر واحد لرقم النسخة في الـ UI ─────────────────────────────
+  function renderVersionUI() {
+    $('verBtn').textContent = `v${TOOL_VERSION} 📋`;
+    $('loginVersionText').textContent = `v${TOOL_VERSION}`;
+    const b = $('clLatestBadge'); if (b) b.textContent = `v${TOOL_VERSION}`;
   }
 
   // ── State ─────────────────────────────────────────────────────────
@@ -937,7 +1092,7 @@
     const o = currentOrder;
     if (!o) return;
 
-    $('ocOrderName').textContent   = o.orderName || `ID: ${o.id}`;
+    $('ocOrderName').innerHTML     = orderLink(o.orderName, o.id);
     $('ocFinancial').textContent   = financialLabel(o.financialStatus);
     $('ocCourier').textContent     = o.courier || '—';
     $('ocCourier').style.color     = o.courier ? 'var(--pink)' : 'var(--text-dim)';
@@ -972,8 +1127,8 @@
     if (o.lineItems && o.lineItems.length > 0) {
       $('ocSkuBody').innerHTML = o.lineItems.map(li => `
         <tr>
-          <td class="td-sku">${li.sku}</td>
-          <td class="td-qty">${li.quantity}</td>
+          <td class="td-sku">${esc(li.sku)}</td>
+          <td class="td-qty">${esc(li.quantity)}</td>
           <td class="td-money">${fmt(li.unitPrice)}</td>
           <td class="td-money">${fmt(li.totalPrice)}</td>
         </tr>`).join('');
@@ -1044,16 +1199,32 @@
         currentOrder.alreadyPreReg = true;
         currentOrder.canMarkAsPaid = false;
         renderOrderCard();
-        showResult(true, `✅ تم التسجيل بنجاح`, `${o.orderName} — سيظهر في Scanner Payment عند مسحه`);
+
+        // الحالة جاية من الـ Worker كما هي — مش مشتقّة من success ? … : …
+        const status   = data.status || 'success';
+        const warnings = data.warnings || [];
+        const title    = status === 'warning' ? '⚠ تم جزئيًا — الفلوس اتسجّلت' : '✅ تم التسجيل بنجاح';
+        const detail   = status === 'warning'
+          ? `${o.orderName} — راجع التحذيرات تحت قبل ما تعتبر الأوردر خلص`
+          : `${o.orderName} — سيظهر في Scanner Payment عند مسحه`;
+
+        showResult(status, title, detail, data.actions || [], warnings);
+        if (status === 'warning') {
+          playBeep('error');
+          showToast('⚠️ تم جزئيًا — فيه خطوة ما تمّتش، راجع التفاصيل', 'warn', 6000);
+        }
         $('orderInput').value = '';
-        prependLocalLogRow(o);
+        // ماتضيفش صف محلي لو D1 ما كتبش — الصف ده بيدّي انطباع إن السجل اتكتب
+        if (data.logged !== false) prependLocalLogRow(o);
       } else {
-        showResult(false, 'فشل التسجيل', data.error || 'خطأ غير معروف');
+        showResult('error', 'فشل التسجيل', data.error || 'خطأ غير معروف', data.actions || [], data.warnings || []);
+        playBeep('error');
         $('registerBtn').disabled = false;
       }
 
     } catch (err) {
-      showResult(false, 'خطأ في الاتصال', err.message || '');
+      showResult('error', 'خطأ في الاتصال', err.message || '');
+      playBeep('error');
       $('registerBtn').disabled = false;
     }
 
@@ -1062,19 +1233,42 @@
   }
 
   // ── UI helpers ────────────────────────────────────────────────────
-  function showResult(ok, title, detail) {
-    $('resultBox').className = `result-box ${ok ? 'success' : 'error'}`;
+  // ٣ حالات مش اتنين — أي حاجة مش فشل ماتبقاش نجاح تلقائيًا.
+  // status: 'success' | 'warning' | 'error'
+  function showResult(status, title, detail, actions = [], warnings = []) {
+    $('resultBox').className = `result-box ${status}`;
     $('resultTitle').textContent  = title;
-    $('resultDetail').textContent = detail;
-  }
-  function hideResult() { $('resultBox').className = 'result-box'; }
+    $('resultDetail').textContent = detail || '';
 
-  function showToast(msg, type = 'ok') {
+    const box = $('resultActions');
+    let html = '';
+    if (actions.length) {
+      html += `<b>اللي تم فعليًا</b><ul>${actions.map(a => `<li>${esc(a)}</li>`).join('')}</ul>`;
+    }
+    if (warnings.length) {
+      html += `<b style="color:var(--gold)">اللي ما تمّش أو ما اتأكدش</b>`
+            + `<ul>${warnings.map(w => `<li>${esc(w)}</li>`).join('')}</ul>`;
+    }
+    box.innerHTML = html;
+    box.style.display = html ? '' : 'none';
+  }
+  function hideResult() {
+    $('resultBox').className = 'result-box';
+    $('resultActions').style.display = 'none';
+    $('resultActions').innerHTML = '';
+  }
+
+  const TOAST_BG = { success: 'var(--success)', warn: 'var(--gold)', error: 'var(--red)', ok: 'var(--purple)' };
+  let _toastTimer = null;
+  function showToast(msg, type = 'ok', duration = 0) {
     const t = $('toast');
     t.textContent = msg;
-    t.style.background = type === 'warn' ? '#d97706' : 'var(--purple)';
+    // 'error' كان بيقع على اللون البنفسجي (شكل النجاح) — دلوقتي كل نوع بلونه
+    t.style.background = TOAST_BG[type] || TOAST_BG.ok;
     t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 1400);
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => t.classList.remove('show'),
+      duration || (type === 'error' ? 5000 : type === 'warn' ? 3000 : 1800));
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1084,13 +1278,42 @@
   let logRows = [], logOffset = 0, logHasMore = true, logLoadingMore = false, logLoadedOnce = false;
   const LOG_PAGE_SIZE = 50;
 
-  function formatDate(iso) {
-    const d = new Date(iso);
-    return `${d.toLocaleDateString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric' })} — ${d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', hour12: true })}`;
+  // ⚠️ كان بيستخدم توقيت جهاز الموظف — جهاز بتوقيت غلط = سجل بتواريخ غلط.
+  // القاعدة الموحّدة: toCairo() + getUTC* دايمًا (html-builder قاعدة 10).
+  function toCairo(iso) { return new Date(new Date(iso).getTime() + 3 * 60 * 60 * 1000); }
+  const _pad = n => String(n).padStart(2, '0');
+
+  function formatDateTime(iso) {
+    if (!iso) return '—';
+    const d = toCairo(iso);
+    let h = d.getUTCHours();
+    const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
+    h = h % 12 || 12;
+    return `📅 ${_pad(d.getUTCDate())}/${_pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
+         + ` 🕐 ${_pad(h)}:${_pad(d.getUTCMinutes())} ${ampm}`;
+  }
+
+  // عمود التاريخ في XLSX — نفس التوقيت بدون إيموجي
+  function formatDateForExport(iso) {
+    if (!iso) return '';
+    const d = toCairo(iso);
+    return `${_pad(d.getUTCDate())}/${_pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} `
+         + `${_pad(d.getUTCHours())}:${_pad(d.getUTCMinutes())}`;
+  }
+
+  // مصدر واحد لباراميترات الفلاتر — get_logs و get_logs_export بيستخدموه،
+  // فمفيش احتمال إن التصدير ينزّل غير المعروض. (الأداة لسه مفيهاش فلاتر سجل،
+  // فالدالة فاضية دلوقتي — بس المكان اللي أي فلتر جديد بيتضاف فيه مرة واحدة.)
+  function logParams() { return {}; }
+
+  function clearExportWarn() {
+    const w = $('logExportWarn');
+    if (w) { w.style.display = 'none'; w.innerHTML = ''; }
   }
 
   async function refreshLog() {
     if (!isConfigured()) { showToast('الأداة غير مضبوطة', 'error'); openSettings(); return; }
+    clearExportWarn();
     logRows = []; logOffset = 0; logHasMore = true; logLoadedOnce = true;
     $('logSyncStatus').className = 'log-sync-status loading'; $('logSyncStatus').textContent = '⏳ جاري...';
     $('logList').innerHTML = '<div class="log-empty">جاري التحميل...</div>';
@@ -1101,7 +1324,7 @@
     if (logLoadingMore || !logHasMore) return;
     logLoadingMore = true;
     try {
-      const data = await apiGet('get_logs', { tool: 'cod_preregister', limit: LOG_PAGE_SIZE, offset: logOffset });
+      const data = await apiGet('get_logs', { ...logParams(), limit: LOG_PAGE_SIZE, offset: logOffset });
       const rows = data.entries || [];
       logRows = logRows.concat(rows);
       logOffset += rows.length;
@@ -1109,7 +1332,7 @@
       $('logSyncStatus').className = 'log-sync-status synced'; $('logSyncStatus').textContent = '☁️ D1';
     } catch (err) {
       $('logSyncStatus').className = 'log-sync-status local'; $('logSyncStatus').textContent = '⚠️ خطأ';
-      showToast('فشل تحميل السجل: ' + err.message, 'warn');
+      showToast('فشل تحميل السجل: ' + err.message, 'error');
     }
     logLoadingMore = false;
     renderLog();
@@ -1139,12 +1362,13 @@
       return `<div class="log-entry">
         <div class="log-entry-header" onclick="this.closest('.log-entry').classList.toggle('open')">
           <div class="log-entry-info">
-            <div class="log-entry-date">${formatDate(row.timestamp)}</div>
+            <div class="log-entry-date">${formatDateTime(row.timestamp)}</div>
             <div class="log-entry-summary">
-              <span class="log-tag tag-prereg">📋 ${row.order_name || ''} <span style="opacity:.7">${row.order_id || ''}</span></span>
-              ${extra.courier ? `<span class="log-tag" style="background:#fdf2f8;color:var(--pink);border:1px solid #fbcfe8">👤 ${extra.courier}</span>` : ''}
+              <span class="log-tag tag-prereg">📋 ${orderLink(row.order_name, row.order_id)}</span>
+              ${extra.courier ? `<span class="log-tag" style="background:#fdf2f8;color:var(--pink);border:1px solid #fbcfe8">👤 ${esc(extra.courier)}</span>` : ''}
               ${row.value_after ? `<span class="log-tag tag-amount">${parseFloat(row.value_after).toLocaleString('en-US',{minimumFractionDigits:2})} EGP</span>` : ''}
-              ${row.employee ? `<span class="log-tag tag-employee">✍️ ${row.employee}</span>` : ''}
+              ${row.employee ? `<span class="log-tag tag-employee">✍️ ${esc(row.employee)}</span>` : ''}
+              ${extra.result === 'warning' ? `<span class="log-tag" style="background:var(--gold-bg);color:var(--gold);border:1px solid #fde68a">⚠ تم جزئيًا</span>` : ''}
             </div>
           </div>
           <span class="log-toggle">▶</span>
@@ -1152,12 +1376,91 @@
         <div class="log-entry-details">
           ${(extra.lineItems || []).map(li => `
             <div class="log-detail-row">
-              <span class="log-detail-name">${li.sku}</span>
-              <span class="log-detail-amt">${li.quantity} × ${li.unitPrice}</span>
+              <span class="log-detail-name">${esc(li.sku)}</span>
+              <span class="log-detail-amt">${esc(li.quantity)} × ${esc(li.unitPrice)}</span>
             </div>`).join('') || '<div class="log-detail-row"><span class="log-detail-name" style="color:var(--text-dim)">لا توجد تفاصيل منتجات</span></div>'}
         </div>
       </div>`;
     }).join('') + (logHasMore ? `<button class="btn-log-more" onclick="loadMoreLog()" ${logLoadingMore?'disabled':''}>${logLoadingMore?'جاري التحميل...':'⬇ تحميل المزيد'}</button>` : '');
+  }
+
+  // ── تصدير XLSX ────────────────────────────────────────────────
+  // ⚠️ بيكلم get_logs_export مش get_logs (اللي مسقوف بـ 100 صف/صفحة)،
+  // وبيقرا cap/total/truncated من الـ Worker — الواجهة ماتكتبش السقف عندها.
+  async function exportLogXLSX() {
+    if (!isConfigured()) { showToast('الأداة غير مضبوطة', 'error'); openSettings(); return; }
+    // ExcelJS من CDN — لو ما حمّلش، قول ليه بدل "ExcelJS is not defined"
+    if (typeof ExcelJS === 'undefined') {
+      showToast('مكتبة التصدير (ExcelJS) ما حمّلتش — راجع الاتصال بالإنترنت وحدّث الصفحة', 'error', 6000);
+      return;
+    }
+    clearExportWarn();
+    showToast('⏳ جاري تجهيز الملف...', 'ok', 4000);
+
+    let data;
+    try {
+      data = await apiGet('get_logs_export', logParams());
+    } catch (err) {
+      showToast('فشل التصدير: ' + err.message, 'error');
+      return;
+    }
+
+    const entries = data.entries || [];
+    if (!entries.length) { showToast('مفيش عمليات للتصدير', 'warn'); return; }
+
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet('Pre-Register');
+    ws.views = [{ rightToLeft: true }];
+    ws.columns = [
+      { header: 'التاريخ',        key: 'date',     width: 20 },
+      { header: 'رقم الأوردر',    key: 'order',    width: 14 },
+      { header: 'Order ID',       key: 'orderId',  width: 18 },
+      { header: 'المبلغ (EGP)',   key: 'amount',   width: 14 },
+      { header: 'الشحن (EGP)',    key: 'shipping', width: 14 },
+      { header: 'المندوب',        key: 'courier',  width: 18 },
+      { header: 'الموظف',         key: 'employee', width: 18 },
+      { header: 'النتيجة',        key: 'result',   width: 12 },
+    ];
+    ws.getRow(1).font = { bold: true };
+    ws.getRow(1).alignment = { horizontal: 'center' };
+
+    entries.forEach(row => {
+      let extra = {};
+      try { extra = row.extra ? JSON.parse(row.extra) : {}; } catch {}
+      ws.addRow({
+        date:     formatDateForExport(row.timestamp),
+        order:    row.order_name || '',
+        orderId:  row.order_id || '',
+        amount:   row.value_after != null ? Number(row.value_after) : null,
+        shipping: extra.shippingAmount != null ? Number(extra.shippingAmount) : null,
+        courier:  extra.courier || '',
+        employee: row.employee || '',
+        // الصفوف القديمة من غير extra.result بتتعرض "—" مش "✓" —
+        // إحنا فعليًا مش عارفين إن كان الفعل تم بالكامل وقتها
+        result:   extra.result ? (extra.result === 'warning' ? 'تم جزئيًا' : 'تم') : '—',
+      });
+    });
+
+    const buf  = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `prereg-export-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+
+    // الحقيقة بتيجي من الـ Worker — رسالة النجاح في فرع else بس
+    const truncated = data.truncated === true || (data.cap && entries.length >= data.cap);
+    if (truncated) {
+      const w = $('logExportWarn');
+      w.innerHTML = `⚠️ <b>التصدير اتقص</b> — الملف فيه ${entries.length.toLocaleString('en-US')} صف`
+        + (data.total != null ? ` من أصل <b>${Number(data.total).toLocaleString('en-US')}</b> مطابقين للفلاتر` : '')
+        + `. ضيّق الفترة أو الفلاتر وصدّر على دفعات.`;
+      w.style.display = '';
+      showToast(`⚠️ التصدير اتقص عند ${entries.length.toLocaleString('en-US')} صف — الملف مش كامل`, 'error', 7000);
+    } else {
+      showToast(`تم تصدير ${entries.length.toLocaleString('en-US')} عملية ✓`, 'success');
+    }
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -1320,7 +1623,7 @@
     try {
       const data = await apiPost('verify_employee', { username, pin });
       if (!data.ok) { await presentLoginPinError('PIN خطأ — حاول مرة أخرى'); return; }
-      await finishLogin(username, data.displayName);
+      await finishLogin(username, data.displayName, data.logged);
     } catch (err) {
       await presentLoginPinError(err.message || 'PIN خطأ');
     } finally {
@@ -1341,7 +1644,7 @@
       if (reg && reg.ok === false) { await presentLoginPinError(reg.error || 'تعذّر تسجيل الـ PIN'); return; }
       const data = await apiPost('verify_employee', { username, pin: pendingNewPin });
       if (!data.ok) { await presentLoginPinError(data.error || 'تعذّر تسجيل الدخول'); return; }
-      await finishLogin(username, data.displayName);
+      await finishLogin(username, data.displayName, data.logged);
     } catch (err) {
       await presentLoginPinError(err.message || 'تعذّر تسجيل الـ PIN');
     } finally {
@@ -1389,17 +1692,21 @@
     if (e.key === 'Enter')                        { e.preventDefault(); handlePrimaryLoginAction(); }
   });
 
-  async function finishLogin(username, displayName) {
+  async function finishLogin(username, displayName, logged = true) {
     currentEmployee = { username, displayName };
     $('loginOverlay').classList.add('hidden');
     $('activeUserBtn').textContent = '👤 ' + displayName;
     showToast(`أهلاً ${displayName} 👋`, 'success');
     playBeep('success');
+    // الدخول نفسه تم — بس السجل ناقص، والموظف يعرف
+    if (logged === false) showToast('⚠️ الدخول تم لكن ما اتسجلش في السجل', 'warn', 5000);
     setTimeout(() => $('orderInput')?.focus(), 100);
+    checkWorkerVersion();
   }
 
-  async function doLogout() {
-    if (!confirm('تسجيل الخروج؟')) return;
+  function doLogout() { showConfirm('تسجيل الخروج؟', performLogout); }
+
+  async function performLogout() {
     if (currentEmployee) apiGet('log_logout', { username: currentEmployee.username }).catch(() => {});
 
     currentOrder = null;
@@ -1426,17 +1733,19 @@
     loadEmployeesList();
   }
 
-  function updateLoginSettingsBtnState() {
+  function updateLoginSettingsBtn() {
     const btn = $('loginSettingsBtn');
     btn.classList.toggle('ready', isConfigured());
     btn.classList.toggle('missing', !isConfigured());
   }
 
   // ── Init ──────────────────────────────────────────────────────
+  renderVersionUI();
   updateSettingsBtn();
-  updateLoginSettingsBtnState();
+  updateLoginSettingsBtn();
   loadEmployeesList();
   renderLog();
+  checkWorkerVersion();
 </script>
 </body>
 </html>
