@@ -1,9 +1,13 @@
+<div dir="rtl" style="text-align: right;">
+
 # تسجيل الدفع المسبق — COD (`COD-Pre-Register-Payment`)
+
+![version](https://img.shields.io/badge/version-v1.1.0-blue)
 
 **بتعمل إيه:** الموظف بيسجّل دفع أوردر COD مسبقًا على شوبيفاي (capture transaction)
 قبل التحصيل الفعلي من المندوب، وبيتحطّ مفتاح "معلّق" في KV لحد ما التحصيل يتم.
 **مين بيستخدمها:** حسابات · تحصيل COD
-**الإصدار:** Worker `v2.0.0` · الواجهة `v2.0.0`   ← الاتنين مستقلين، طبيعي يختلفوا
+**الإصدار:** Worker `v2.1.0` · الواجهة `v2.1.0`   ← الاتنين مستقلين، طبيعي يختلفوا
 
 ## الروابط
 
@@ -20,10 +24,11 @@
 | `resolveByName` | رقم الأوردر → numeric ID |
 | `preview` | بيانات الأوردر + هل مسجَّل مسبقًا في KV |
 | `preRegister` | capture على شوبيفاي + مفتاح KV + ميتافيلد + سجل D1 |
-| `checkPending` / `clearPending` / `listPending` | API لـ `cod-payment-center-worker` |
+| `checkPending` / `clearPending` / `listPending` | **API داخلي لـ `cod-payment-center-worker` — شكل الرد مقفول، ممنوع تغييره** |
 | `import_pending_kv` | ⚠️ **مؤقت** — ترحيل مفاتيح KV من `ecommoda24`. راجع «مسائل مفتوحة» |
 | `check_employee` / `register_pin` / `verify_employee` / `log_logout` / `get_employees` | Universal D1 Auth |
-| `get_logs` / `get_logs_count` / `get_logs_export` | سجل العمليات |
+| `get_logs` / `get_logs_count` / `get_logs_export` | سجل العمليات (التصدير بيرجّع `cap`/`total`/`truncated`) |
+| `diag` / `get_config` | فحص ذاتي + نسخة الـ Worker |
 
 ## D1
 
@@ -33,6 +38,9 @@ type  : preregister · login · logout
 ```
 
 > مسجّلة في جدول `ecommoda-constants` §7. مفيش جداول D1 إضافية — `logs` و`employees` بس.
+> `extra.result` في صفوف `preregister` بياخد `success` أو `warning` (من v2.1.0).
+> **الصفوف الأقدم من v2.1.0 مالهاش الحقل ده** — بتتعرض «—» مش «✓»، لأننا فعليًا
+> مش عارفين إن كانت كل الخطوات تمّت وقتها.
 
 ## KV
 
@@ -44,8 +52,6 @@ Binding : PRE_REG_KV → pre-register-payment-cod-KV (aaeff3d84e2c4e87bc7cce6bfd
 
 ## المضبوط فعليًا في الداشبورد
 
-> اللي **متظبط بالفعل** — مش اللي المفروض يكون.
-
 ```
 Bindings : DB → ecommoda-dev-logs · PRE_REG_KV → pre-register-payment-cod-KV
 Secrets  : WORKER_SECRET · CLIENT_ID · CLIENT_SECRET
@@ -53,30 +59,31 @@ Vars     : SHOP_DOMAIN     ← من [vars] في wrangler.toml. مفيش LOCATION
 Build watch paths : * (الافتراضي)
 ```
 
-### تصنيف الـ `env.*` (من فحص الكود — `ecommoda-tool-migration-playbook` §4-أ-٢)
+### تصنيف الـ `env.*`
 
 | النوع | المتغيّرات | التحقق |
 |---|---|---|
 | **سر** | `WORKER_SECRET` · `CLIENT_ID` · `CLIENT_SECRET` | قيمتها مستحيلة القراءة — يدوي من الداشبورد + **Promote** |
-| **var بيفشل لو غاب** | `SHOP_DOMAIN` | غيابه = كل نداء Shopify بيضرب `https://undefined/...` وبيرمي |
-| **var ليه fallback** | **لا شيء** | ✅ الأداة دي مالهاش الصف التالت — يعني مفيش خطر «أرقام غلط بصمت» من متغيّر ضايع |
+| **var بيفشل لو غاب** | `SHOP_DOMAIN` | من v2.1.0 `assertEnv()` بيوقف العملية برسالة باسمه بدل `https://undefined/...` |
+| **var ليه fallback** | **لا شيء** | ✅ مفيش خطر «أرقام غلط بصمت» من متغيّر ضايع |
+
+> `?action=diag` بيفحص التلاتة + D1 + KV + OAuth + صلاحيات شوبيفاي + الـ Origin،
+> وبيرجّع **أسماء وأطوال** الأسرار بس — ممنوع أي قيمة.
 
 ## CORS
 
-`ALLOWED_ORIGINS` **صارمة** (مش wildcard) — لأن الأداة **مالية/كتابة**
-(بتعمل capture حقيقي على شوبيفاي). القايمة الحالية فيها دومينين مهجورين —
-راجع «مسائل مفتوحة».
+`ALLOWED_ORIGINS` = `['https://ecommoda-dev.github.io']` **بس** — الأداة مالية/كتابة.
 
-## خط الأساس بعد النقل
+> ✅ **اتنضّف 01-09-2026:** `ecommoda24.github.io` (اللي كان كمان قيمة الـ fallback
+> `ALLOWED_ORIGINS[0]`) و`ahmedibraheemsb.github.io` اتشالوا —
+> `ecommoda-constants` §11 بندي 10 و11 يتقفلوا لهذه الأداة.
 
-> الأرقام قبل النقل مباشرةً — من D1، مرجع لأي شك بعد كده.
+## خط الأساس
 
 ```
 tool='cod_preregister' AND type='preregister'
-  عدد الصفوف : 233
-  إجمالي المبالغ : 691,877 ج
-  آخر صف : 2026-09-01T08:50:38.932Z
-  (اتقاس 01-09-2026 قبل النقل)
+  عدد الصفوف : 233 · إجمالي المبالغ : 691,877 ج
+  آخر صف : 2026-09-01T08:50:38.932Z     (اتقاس 01-09-2026 قبل النقل)
 ```
 
 ```sql
@@ -88,11 +95,13 @@ SELECT COUNT(*) AS total_preregister, MAX(timestamp) AS last_row, ROUND(SUM(valu
 
 ## فخاخ الأداة دي
 
-- **الأداة مالية — التسجيل مالوش تراجع.** `preRegister` بيعمل capture حقيقي على
-  شوبيفاي. أي تعديل على المسار ده يتراجع مرتين قبل النشر.
-- **ترتيب العمليات في `preRegister` مقصود:** الفلوس الأول (خطوة ١)، وبعدها KV
-  والميتافيلد وD1 — التلاتة دول **غير حرجة** وفشلهم متعمّد إنه ميوقفش العملية.
-  عكس الترتيب معناه فلوس متسجّلة من غير أثر، أو أثر من غير فلوس.
+- **الأداة مالية — التسجيل مالوش تراجع.** `preRegister` بيعمل capture حقيقي.
+  أي تعديل على المسار ده يتراجع مرتين قبل النشر.
+- **ترتيب العمليات في `preRegister` مقصود:** الفلوس الأول (خطوة ①)، وبعدها KV
+  والميتافيلد وD1. التلاتة دول فشلهم بيدّي **`status: 'warning'`** — مش نجاح ومش
+  فشل كامل. عكس الترتيب معناه فلوس متسجّلة من غير أثر، أو أثر من غير فلوس.
+- **`checkPending`/`clearPending`/`listPending` عقد مع أداة تانية.** أي تغيير في
+  شكل الرد بيكسر `cod-payment-center-worker` من غير أي رسالة.
 - **مفاتيح بوسطة في `PRE_REG_KV` مش بقايا — دي backlog.** ❌ ممنوع حذفها.
   القرار كامل في `ecommoda-constants` §11 بند 14.
 - `listPending` بيعمل `KV.list()` + `get()` لكل مفتاح في **كل** نداء — كل ما
@@ -100,11 +109,11 @@ SELECT COUNT(*) AS total_preregister, MAX(timestamp) AS last_row, ROUND(SUM(valu
 
 ## استرجاع النسخ القديمة
 
-> ده بديل الـ tags — دفع الـ tags ممنوع من جلسات Claude Code السحابية.
-
 ```
 النسخة القديمة من الواجهة (Index.html بحرف كبير) محفوظة في commit: c26378c
 git show c26378c:Index.html
+نسخة ما قبل المراجعة الشاملة (Worker v2.0.0 · الواجهة v2.0.0): commit 872332a
+git show 872332a:index.js   ·   git show 872332a:index.html
 ```
 
 ## بصمة المهارات
@@ -116,23 +125,35 @@ git show c26378c:Index.html
 | ecommoda-constants | v1.4.3 |
 | shopify-graphql-helper | v1.0.0 |
 
-آخر مطابقة: 01-09-2026 · `index.js` v2.0.0 · `index.html` v2.0.0
-🔴 معلّقة: تنظيف الدومينات المهجورة من `ALLOWED_ORIGINS` (`ecommoda-constants`
-§11 بندي 10 و11) — **مؤجَّل بوعي**: النقل لازم يخرج بـ `index.js` مطابق
-بايت ببايت للنسخة المنشورة، فأي تعديل كود بيبطّل الدليل ده. يتعمل في PR منفصل
-بعد ما البناء يبقى أخضر.
+آخر مطابقة: 01-09-2026 · `index.js` v2.1.0 · `index.html` v2.1.0
+
+🔴 معلّقة:
+- **معيار الجداول الموحّد (`data-table-standard`) مش متطبّق على السجل.** السجل
+  لسه بطاقات (`.log-entry`) مش جدول — يعني بند ٢٦ في Standards Changelog، و
+  **نتيجته**: `--container-max` لسه `700px` (خارج التلات Tiers، والحد الأدنى
+  لأداة فيها سجل هو M = `1200px`). ده **redesign بصري** مش إصلاح، ومؤجَّل بقرار
+  لحد ما يتراجع مع صاحب الأداة — تغيير عرض الأداة من 700 لـ 1200 بيقلب شكلها
+  بالكامل وهي أداة كارت واحد ضيّق بطبيعتها.
+- **فلاتر السجل مش موجودة أصلًا** (مفيش موظف/نوع/تاريخ). الـ Worker بقى بيدعمها
+  بالكامل (`buildLogFilterSQL` + `logParamsFrom` + CSV)، والواجهة فيها
+  `logParams()` كمصدر واحد جاهز — فإضافتها بقت وصل أسلاك، مش بناء.
 
 ## مسائل مفتوحة
 
-- **`ALLOWED_ORIGINS` فيها دومينين مهجورين:** `ecommoda24.github.io` (وهو كمان
-  **قيمة الـ fallback** `ALLOWED_ORIGINS[0]`) و`ahmedibraheemsb.github.io`.
-  القرار اتحسم في `ecommoda-constants` §11 بند 11 — التنفيذ لسه.
-  ⚠️ ولاحظ ترتيب المصفوفة مش وجود القيمة بس: أي origin غير معروف حاليًا بياخد
-  ترويسة CORS بدومين مهجور.
-- **`import_pending_kv` endpoint مؤقت لسه منشور.** معلَّم في الكود إنه لترحيل
-  KV من `ecommoda24`، ومفيهوش أي idempotency. نفس شكل `import_logs` اللي كتب
-  925 صف مكرر في أداة تانية (`ecommoda-constants` §11 بند 13). **مرشّح للحذف
-  فور تأكيد إن الترحيل خلص.**
-- **Build watch paths لسه `*` (الافتراضي)** — يعني أي تعديل واجهة بينشر الـ
-  Worker تاني بنفس الكود. التضييق على `index.js` + `wrangler.toml` اختياري
-  (`ecommoda-tool-migration-playbook` §13-ب) ولسه ما اتعملش.
+- **`import_pending_kv` endpoint مؤقت لسه منشور.** معلَّم في الكود إنه لترحيل KV
+  من `ecommoda24`. **ملحوظة:** هو `KV.put` بمفتاح معلوم، يعني idempotent بطبيعته
+  — مش نفس خطورة `import_logs` اللي كتب 925 صف مكرر. برضه مرشّح للحذف فور تأكيد
+  إن الترحيل خلص (`ecommoda-constants` §11 بند 13).
+- **بيانات العميل (الاسم/التليفون).** الواجهة جاهزة لعرضها من زمان
+  (`customerBox` + سطور في نافذة التأكيد)، لكن `preview` في الـ Worker
+  **مش بيرجّعها** — فالصندوق بيفضل مخفي دايمًا. إضافتها محتاجة صلاحية
+  `read_customers` على تطبيق شوبيفاي (ولو مش موجودة، الاستعلام كله هيفشل بـ
+  ACCESS_DENIED ويكسر `preview`)، **وقرار صريح** لأنها بيانات شخصية. متضافش من
+  غير ما تتأكد من الصلاحية الأول بـ `?action=diag`.
+- **Build watch paths لسه `*` (الافتراضي)** — أي تعديل واجهة بينشر الـ Worker
+  تاني بنفس الكود. التضييق على `index.js` + `wrangler.toml`
+  (`ecommoda-tool-migration-playbook` §13-ب) اختياري ولسه ما اتعملش.
+
+آخر تحديث: 01-09-2026 — 14:30
+
+</div>
