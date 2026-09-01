@@ -2,12 +2,12 @@
 
 # تسجيل الدفع المسبق — COD (`COD-Pre-Register-Payment`)
 
-![version](https://img.shields.io/badge/version-v1.1.0-blue)
+![version](https://img.shields.io/badge/version-v1.2.0-blue)
 
 **بتعمل إيه:** الموظف بيسجّل دفع أوردر COD مسبقًا على شوبيفاي (capture transaction)
 قبل التحصيل الفعلي من المندوب، وبيتحطّ مفتاح "معلّق" في KV لحد ما التحصيل يتم.
 **مين بيستخدمها:** حسابات · تحصيل COD
-**الإصدار:** Worker `v2.1.0` · الواجهة `v2.1.0`   ← الاتنين مستقلين، طبيعي يختلفوا
+**الإصدار:** Worker `v2.2.0` · الواجهة `v2.2.0`   ← الاتنين مستقلين، طبيعي يختلفوا
 
 ## الروابط
 
@@ -27,7 +27,7 @@
 | `checkPending` / `clearPending` / `listPending` | **API داخلي لـ `cod-payment-center-worker` — شكل الرد مقفول، ممنوع تغييره** |
 | `import_pending_kv` | ⚠️ **مؤقت** — ترحيل مفاتيح KV من `ecommoda24`. راجع «مسائل مفتوحة» |
 | `check_employee` / `register_pin` / `verify_employee` / `log_logout` / `get_employees` | Universal D1 Auth |
-| `get_logs` / `get_logs_count` / `get_logs_export` | سجل العمليات (التصدير بيرجّع `cap`/`total`/`truncated`) |
+| `get_logs` / `get_logs_count` / `get_logs_export` | سجل العمليات — فلترة (`employees` · `search` · `dateFrom`/`dateTo`) وترتيب (`sortKey`/`sortDir`) وصفحات، كلهم server-side. التصدير بيرجّع `cap`/`total`/`truncated` |
 | `diag` / `get_config` | فحص ذاتي + نسخة الـ Worker |
 
 ## D1
@@ -59,6 +59,17 @@ Vars     : SHOP_DOMAIN     ← من [vars] في wrangler.toml. مفيش LOCATION
 Build watch paths : * (الافتراضي)
 ```
 
+### الترتيب في `get_logs` — whitelist إجباري
+
+```
+LOG_SORT_COLUMNS = timestamp · employee · order_name · value_after
+```
+
+الترتيب بيتحقن في نص الـ SQL، فأي قيمة جاية من المستخدم **لازم** تعدّي على الـ
+whitelist. الأعمدة المشتقّة من `extra` JSON (المندوب · الشحن · المنتجات) مش
+موجودة في الجدول، فمش قابلة للترتيب server-side — وعشان كده مالهاش `sortable-th`
+في الواجهة أصلاً.
+
 ### تصنيف الـ `env.*`
 
 | النوع | المتغيّرات | التحقق |
@@ -69,6 +80,18 @@ Build watch paths : * (الافتراضي)
 
 > `?action=diag` بيفحص التلاتة + D1 + KV + OAuth + صلاحيات شوبيفاي + الـ Origin،
 > وبيرجّع **أسماء وأطوال** الأسرار بس — ممنوع أي قيمة.
+
+## بيانات العميل — عرض فقط
+
+`preview` بيرجّع `customerName` و`customerPhone` (من `customer.displayName` /
+`shippingAddress` مع fallback على `order.phone`). محتاجة صلاحية **`read_customers`**
+على تطبيق شوبيفاي — `?action=diag` بيفحصها ضمن الصلاحيات المطلوبة.
+
+> ⛔ **ممنوع تدخل `writeLog` أو `extra` أو التصدير.** السجل بيتصدّر XLSX وبيتقرا
+> من أدوات تانية، والبيانات دي شخصية. القرار ده قديم ومقصود — لو اتغيّر يومًا،
+> يتكتب هنا الأول.
+> ⚠️ ولو الصلاحية اتشالت من التطبيق، الاستعلام **كله** هيفشل بـ `ACCESS_DENIED`
+> ويكسر `preview` — مش هيرجّع بيانات ناقصة بصمت.
 
 ## CORS
 
@@ -113,7 +136,8 @@ SELECT COUNT(*) AS total_preregister, MAX(timestamp) AS last_row, ROUND(SUM(valu
 النسخة القديمة من الواجهة (Index.html بحرف كبير) محفوظة في commit: c26378c
 git show c26378c:Index.html
 نسخة ما قبل المراجعة الشاملة (Worker v2.0.0 · الواجهة v2.0.0): commit 872332a
-git show 872332a:index.js   ·   git show 872332a:index.html
+نسخة ما قبل جدول السجل     (Worker v2.1.0 · الواجهة v2.1.0): commit 31302a2
+git show 31302a2:index.html
 ```
 
 ## بصمة المهارات
@@ -127,16 +151,27 @@ git show 872332a:index.js   ·   git show 872332a:index.html
 
 آخر مطابقة: 01-09-2026 · `index.js` v2.1.0 · `index.html` v2.1.0
 
-🔴 معلّقة:
-- **معيار الجداول الموحّد (`data-table-standard`) مش متطبّق على السجل.** السجل
-  لسه بطاقات (`.log-entry`) مش جدول — يعني بند ٢٦ في Standards Changelog، و
-  **نتيجته**: `--container-max` لسه `700px` (خارج التلات Tiers، والحد الأدنى
-  لأداة فيها سجل هو M = `1200px`). ده **redesign بصري** مش إصلاح، ومؤجَّل بقرار
-  لحد ما يتراجع مع صاحب الأداة — تغيير عرض الأداة من 700 لـ 1200 بيقلب شكلها
-  بالكامل وهي أداة كارت واحد ضيّق بطبيعتها.
-- **فلاتر السجل مش موجودة أصلًا** (مفيش موظف/نوع/تاريخ). الـ Worker بقى بيدعمها
-  بالكامل (`buildLogFilterSQL` + `logParamsFrom` + CSV)، والواجهة فيها
-  `logParams()` كمصدر واحد جاهز — فإضافتها بقت وصل أسلاك، مش بناء.
+🔴 معلّقة: — لا شيء
+
+## السجل — جدول على المعيار الموحّد (v2.2.0)
+
+```
+الفلاتر  : بحث (order_name/notes) · فترة سريعة + من/إلى · الموظف (multi-select)
+الأعمدة  : التاريخ · الوقت · الموظف · رقم الأوردر · المبلغ · الشحن ·
+           تحصيل المندوب · المندوب · المنتجات · النتيجة
+الترتيب  : على ٤ أعمدة بس (التاريخ/الوقت · الموظف · رقم الأوردر · المبلغ)
+الصفحات  : 100 صف/صفحة
+```
+
+**كل حاجة server-side — الفلترة والعدّ والترتيب.** السبب مش تفضيل: السجل مقسّم
+صفحات، فالفلترة في المتصفح كانت هتخلي «النتائج» تعدّ الصفحة (100) مش القاعدة،
+والصفحة التانية تيجي بلا فلترة، والتصدير ينزّل غير المعروض — كله في السكوت.
+ده استثناء صريح من قاعدة «النتائج client-side» في `data-table-standard` §7،
+ومنصوص عليه في نفس المعيار (Log Filter Model v2 · Standards #31).
+
+⚠️ **`dateFrom`/`dateTo` بيتقارنوا بـ `timestamp` المخزّن (UTC)، والعرض بتوقيت
+القاهرة (+3).** عملية بعد ٩ مساءً بتوقيت القاهرة ممكن تقع في يوم UTC اللي بعده.
+مقبول لفلتر بالأيام — بس **مكتوب** عشان مايتكتشفش كباج بعدين.
 
 ## مسائل مفتوحة
 
@@ -144,16 +179,10 @@ git show 872332a:index.js   ·   git show 872332a:index.html
   من `ecommoda24`. **ملحوظة:** هو `KV.put` بمفتاح معلوم، يعني idempotent بطبيعته
   — مش نفس خطورة `import_logs` اللي كتب 925 صف مكرر. برضه مرشّح للحذف فور تأكيد
   إن الترحيل خلص (`ecommoda-constants` §11 بند 13).
-- **بيانات العميل (الاسم/التليفون).** الواجهة جاهزة لعرضها من زمان
-  (`customerBox` + سطور في نافذة التأكيد)، لكن `preview` في الـ Worker
-  **مش بيرجّعها** — فالصندوق بيفضل مخفي دايمًا. إضافتها محتاجة صلاحية
-  `read_customers` على تطبيق شوبيفاي (ولو مش موجودة، الاستعلام كله هيفشل بـ
-  ACCESS_DENIED ويكسر `preview`)، **وقرار صريح** لأنها بيانات شخصية. متضافش من
-  غير ما تتأكد من الصلاحية الأول بـ `?action=diag`.
 - **Build watch paths لسه `*` (الافتراضي)** — أي تعديل واجهة بينشر الـ Worker
   تاني بنفس الكود. التضييق على `index.js` + `wrangler.toml`
   (`ecommoda-tool-migration-playbook` §13-ب) اختياري ولسه ما اتعملش.
 
-آخر تحديث: 01-09-2026 — 14:30
+آخر تحديث: 01-09-2026 — 16:10
 
 </div>

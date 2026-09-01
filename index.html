@@ -49,7 +49,19 @@
     --font: 'Noto Sans Arabic', sans-serif;
     --mono: 'Noto Sans Arabic', sans-serif;
     --font-mono: 'Noto Sans Arabic', sans-serif;
-    --container-max: 700px;
+    /* Tier M — الأداة فيها جدول سجل حقيقي، فالـ Tier S (1040px) ممنوع
+       (data-table-standard §9 · design-system § Container Width Tiers) */
+    --container-max: 1200px;
+    /* أسماء المعيار الموحّد — aliases على متغيّرات الأداة عشان الكتل المنسوخة
+       من templates/24_data-table-section.html تشتغل زي ما هي */
+    --surface: #ffffff;
+    --surface-2: #f9fafb;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --green-border: #bbf7d0;
+    --amber-light: #fffbeb;
+    --amber-bg: #fffbeb;
+    --purple-light: #faf5ff;
     --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
     --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
   }
@@ -64,7 +76,7 @@
     padding: 1rem;
   }
 
-  .container { max-width: 700px; margin: 0 auto; }
+  .container { max-width: var(--container-max); margin: 0 auto; }
 
   /* ── App Header — المعيار الموحّد ── */
   .app-header { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius,12px); padding: 10px 16px; margin-bottom: 12px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
@@ -87,6 +99,10 @@
   }
 
   /* ── Card ── */
+  /* كارت الأوردر نفسه يفضل ضيّق — الأداة كارت أوردر واحد، الجدول هو اللي
+     محتاج العرض الكامل. .tool-col بيحدّ عرض الجزء العلوي بس. */
+  .tool-col { max-width: 760px; margin: 0 auto; }
+
   .card {
     background: var(--bg-card); border: 1px solid var(--border);
     border-radius: 14px; padding: 1.1rem; margin-bottom: 1rem;
@@ -223,6 +239,165 @@
   .result-actions b { display: block; margin-bottom: 0.15rem; font-size: 0.75rem; text-transform: uppercase; letter-spacing: .04em; opacity: .8; }
   .result-actions ul { margin: 0; padding-inline-start: 1.1rem; }
 
+
+  /* ══════════════════════════════════════════════════════
+     القسم الموحّد — فلاتر + جدول (data-table-standard.md)
+     منقول حرفيًا من templates/24_data-table-section.html
+     ⚠️ ممنوع overflow:hidden على .unified-section — بيقص القوايم المنسدلة
+     ══════════════════════════════════════════════════════ */
+  .unified-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow);margin-bottom:16px;}
+  .section-divider{border-top:1px solid var(--border);}
+
+  .flt-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;
+    background:var(--surface-2);cursor:pointer;user-select:none;transition:background .12s;
+    border-radius:var(--radius) var(--radius) 0 0;}
+  .flt-header:hover{background:#f0f4f8;}
+  .flt-header-right{display:flex;align-items:center;gap:10px;}
+  .flt-icon{width:34px;height:22.5px;color:var(--text-muted);transition:color .2s;flex-shrink:0;}
+  .flt-icon.active{color:var(--accent);}
+  .flt-toggle{font-size:13px;color:var(--text-muted);transition:transform .25s;}
+  .flt-toggle.open{transform:rotate(180deg);}
+  .flt-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px;}
+  .flt-body.collapsed{display:none;}
+  .flt-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;}
+  .flt-g{display:flex;flex-direction:column;gap:3px;}
+  .flt-label{font-size:10px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+
+  .clear-btn{display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:var(--radius-sm);
+    font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;height:34px;
+    border:1px solid var(--red-border);color:var(--red);background:var(--red-light);}
+  .clear-btn:hover{background:var(--red);color:#fff;border-color:var(--red);}
+  .clear-btn.inactive{border-color:var(--border);color:var(--text-muted);background:var(--surface-2);
+    cursor:not-allowed;opacity:.6;}
+  .clear-btn.inactive:hover{background:var(--surface-2);color:var(--text-muted);border-color:var(--border);}
+
+  .search-wrap{position:relative;max-width:280px;flex:1;min-width:200px;}
+  .search-input{width:100%;border:1px solid var(--border-strong);border-radius:var(--radius-sm);
+    padding:8px 12px 8px 34px;font-family:inherit;font-size:13px;height:36px;box-sizing:border-box;
+    outline:none;transition:border-color .15s,background .15s;background:var(--surface);}
+  .search-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,58,237,.08);}
+  .search-input.has-value{border-color:var(--accent);background:var(--accent-light);}
+  .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-muted);pointer-events:none;}
+
+  .ms-wrap{position:relative;}
+  .ms-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:170px;height:34px;
+    padding:6px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);background:var(--surface);
+    font-family:inherit;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;transition:all .15s;white-space:nowrap;}
+  .ms-btn:hover{border-color:var(--accent);}
+  .ms-btn.has-selection{border-color:var(--accent);color:var(--accent-dark);background:var(--accent-light);}
+  .ms-btn.open{border-color:var(--accent);box-shadow:0 0 0 2px rgba(124,58,237,.08);}
+  .ms-btn .ms-count{font-family:var(--font-mono);font-size:10.5px;font-weight:700;color:#fff;background:var(--accent);
+    border-radius:20px;padding:1px 7px;min-width:18px;text-align:center;}
+  .ms-btn .ms-arrow{font-size:9px;color:var(--text-muted);transition:transform .2s;flex-shrink:0;}
+  .ms-btn.open .ms-arrow{transform:rotate(180deg);}
+  .ms-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:200;width:250px;max-width:85vw;
+    background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);
+    box-shadow:0 8px 28px rgba(0,0,0,.14);display:none;flex-direction:column;overflow:hidden;}
+  .ms-menu.open{display:flex;}
+  .ms-ftr-top{display:flex;justify-content:space-between;align-items:center;gap:8px;
+    padding:7px 10px;border-bottom:1px solid var(--border);background:var(--surface-2);}
+  .ms-ftr-clear{font-size:11.5px;font-weight:700;color:var(--red);background:none;border:none;cursor:pointer;
+    padding:4px 6px;border-radius:5px;font-family:inherit;}
+  .ms-ftr-clear:hover{background:var(--red-light);}
+  .ms-ftr-count{font-size:11px;color:var(--text-muted);}
+  .ms-search-wrap{padding:8px;border-bottom:1px solid var(--border);}
+  .ms-search{width:100%;height:32px;border:1px solid var(--border-strong);border-radius:6px;padding:0 10px;
+    font-family:inherit;font-size:12px;outline:none;background:var(--surface-2);}
+  .ms-search:focus{border-color:var(--accent);background:var(--surface);}
+  .ms-selectall-row{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border);
+    background:var(--surface-2);font-size:12px;font-weight:700;cursor:pointer;user-select:none;}
+  .ms-selectall-row:hover{background:#f0f4f8;}
+  .ms-list{max-height:200px;overflow-y:auto;padding:4px;}
+  .ms-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;font-size:12.5px;
+    cursor:pointer;user-select:none;transition:background .1s;}
+  .ms-item:hover{background:var(--surface-2);}
+  .ms-item.checked{background:var(--accent-light);}
+  .ms-item input[type=checkbox],.ms-selectall-row input[type=checkbox]{width:15px;height:15px;cursor:pointer;
+    accent-color:var(--accent);flex-shrink:0;}
+  .ms-item .ms-item-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .ms-empty{padding:16px;text-align:center;font-size:12px;color:var(--text-muted);}
+
+  .ms-chips-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+  .ms-chips-row:empty{display:none;}
+  .chips-label{font-size:11.5px;font-weight:700;color:var(--text-secondary);white-space:nowrap;}
+  .ms-chip{display:flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent-dark);
+    border:1px solid var(--purple-border);border-radius:20px;padding:3px 6px 3px 10px;font-size:11.5px;font-weight:600;}
+  .ms-chip button{border:none;background:rgba(124,58,237,.15);color:var(--accent-dark);width:16px;height:16px;
+    border-radius:50%;font-size:11px;cursor:pointer;line-height:1;font-family:inherit;}
+  .ms-chip button:hover{background:var(--accent);color:#fff;}
+
+  .range-preset-wrap{position:relative;}
+  .range-preset-btn{display:flex;align-items:center;gap:6px;height:34px;padding:6px 10px;border:1px solid var(--border-strong);
+    border-radius:var(--radius-sm);background:var(--surface);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .range-preset-btn.has-preset{border-color:var(--accent);color:var(--accent-dark);background:var(--accent-light);}
+  .range-preset-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:200;width:170px;background:var(--surface);
+    border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:0 8px 28px rgba(0,0,0,.14);display:none;padding:4px;}
+  .range-preset-menu.open{display:block;}
+  .range-preset-clear-row{padding:6px 8px;border-bottom:1px solid var(--border);}
+  .range-preset-clear-row button{font-size:11.5px;font-weight:700;color:var(--red);background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:5px;font-family:inherit;}
+  .range-preset-clear-row button:hover{background:var(--red-light);}
+  .range-preset-item{display:flex;justify-content:space-between;padding:7px 10px;font-size:12px;border-radius:6px;cursor:pointer;}
+  .range-preset-item:hover{background:var(--surface-2);}
+  .range-preset-item.active{background:var(--accent-light);color:var(--accent-dark);font-weight:700;}
+  .range-preset-item .pr-check{display:none;color:var(--accent);}
+  .range-preset-item.active .pr-check{display:inline;}
+  .range-preset-sep{height:1px;background:var(--border);margin:4px 2px;}
+  .range-date-wrap input[type=date]{width:150px;height:34px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);
+    padding:6px 10px;font-family:inherit;font-size:12px;outline:none;cursor:pointer;}
+
+  .tbl-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;
+    background:var(--surface-2);cursor:pointer;user-select:none;transition:background .12s;flex-wrap:wrap;}
+  .tbl-bar:hover{background:#f0f4f8;}
+  .tbl-bar-right,.tbl-bar-left{display:flex;align-items:center;gap:8px;}
+  .results-wrap{display:flex;align-items:center;gap:8px;}
+  .results-label{font-size:14px;font-weight:800;color:var(--text-primary);white-space:nowrap;}
+  .results-count{display:inline-flex;align-items:center;justify-content:center;
+    min-width:44px;height:34px;padding:0 10px;font-family:var(--font-mono);font-size:17px;font-weight:800;
+    color:var(--purple);background:var(--purple-light);border:1.5px solid var(--purple-border);border-radius:var(--radius-sm);}
+  .tbl-toggle{font-size:13px;color:var(--text-muted);transition:transform .25s;}
+  .tbl-toggle.open{transform:rotate(180deg);}
+  .act-btn{display:flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--radius-sm);
+    font-family:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;border:none;}
+  .act-btn.refresh{background:var(--surface);border:1px solid var(--border-strong);color:var(--text-primary);}
+  .act-btn.refresh:hover{border-color:var(--accent);color:var(--accent);}
+  .act-btn.export{background:var(--green-light);border:1px solid var(--green-border);color:var(--green);}
+  .act-btn.export:hover{background:var(--green);color:#fff;}
+  .act-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+  .tbl-body-wrap{max-height:2400px;overflow:hidden;transition:max-height .3s ease;border-radius:0 0 var(--radius) var(--radius);}
+  .tbl-body-wrap.collapsed{max-height:0;}
+  .tbl-scroll{overflow-x:auto;border-radius:0 0 var(--radius) var(--radius);}
+
+  .data-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .data-table thead th{text-align:center;background:var(--surface-2);color:var(--text-secondary);
+    font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:10px 8px;
+    border-bottom:2px solid var(--border-strong);white-space:nowrap;}
+  .sortable-th{cursor:pointer;user-select:none;transition:background .12s,color .12s;}
+  .sortable-th:hover{background:var(--accent-light);color:var(--accent-dark);}
+  .sortable-th.sorted{background:var(--accent-light);color:var(--accent-dark);}
+  .sort-icon{display:inline-block;font-size:10px;color:var(--accent);font-weight:900;}
+  .sort-icon.active{margin-inline-start:4px;}
+  .data-table tbody td{text-align:center;padding:10px 8px;border-bottom:1px solid var(--border);white-space:nowrap;}
+  .data-table thead th,.data-table tbody td{border-inline-start:1px solid var(--border);}
+  .data-table thead th:first-child,.data-table tbody td:first-child{border-inline-start:none;}
+  .data-table tbody tr:hover{background:var(--surface-2);}
+  .col-num{font-family:var(--font-mono);direction:ltr;white-space:nowrap;}
+  .empty-row td{padding:40px;text-align:center;color:var(--text-muted);font-size:13px;}
+  .items-cell{max-width:280px;white-space:normal;text-align:right;font-size:11.5px;color:var(--text-secondary);line-height:1.7;}
+
+  .pagination-row{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;flex-wrap:wrap;}
+  .page-info{font-size:13px;color:var(--text-secondary);font-family:var(--mono);padding:0 8px;}
+  .page-btn{padding:6px 14px;border-radius:7px;border:1px solid var(--border);background:#fff;font-size:13px;
+    font-weight:600;cursor:pointer;font-family:var(--font);color:var(--text);transition:background .15s,border-color .15s;}
+  .page-btn:hover:not(:disabled){background:var(--accent-light);border-color:var(--purple-border);color:var(--accent);}
+  .page-btn:disabled{opacity:.4;cursor:not-allowed;}
+
+  .res-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+  .res-badge.ok   {background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
+  .res-badge.warn {background:var(--gold-bg);color:var(--gold);border:1px solid #fde68a;}
+  .res-badge.none {background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
+
   /* ── رقم الأوردر = هايبر لينك لشوبيفاي ── */
   .order-link { color: var(--purple); font-family: var(--mono); font-weight: 700; text-decoration: none; border-bottom: 1px dashed var(--purple-border); }
   .order-link:hover { border-bottom-style: solid; }
@@ -275,72 +450,8 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ── Log ── */
-  .log-section { margin-top: 0.5rem; }
-  .log-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-  .log-header h2 { font-size: 0.92rem; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 0.5rem; }
-  .log-actions { display: flex; gap: 0.5rem; }
-  .log-btn {
-    background: var(--bg-card); border: 1px solid var(--border); color: var(--text-dim);
-    padding: 0.35rem 0.7rem; border-radius: 8px; font-family: inherit;
-    font-size: 0.75rem; cursor: pointer; transition: all 0.2s; box-shadow: var(--shadow);
-  }
-  .log-btn:hover { border-color: var(--purple); color: var(--purple); }
-  .log-empty {
-    text-align: center; padding: 2rem; color: var(--text-dim);
-    font-size: 0.85rem; background: var(--bg-card);
-    border: 1px dashed var(--border); border-radius: 12px;
-  }
-  .log-list { max-height: 420px; overflow-y: auto; }
-  .btn-log-more {
-    width: 100%; padding: 0.6rem; border-radius: 10px; border: 1px dashed var(--border-strong);
-    background: var(--bg-card); color: var(--text-dim); font-family: inherit; font-size: 0.78rem;
-    font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 0.5rem;
-  }
-  .btn-log-more:hover:not(:disabled) { border-color: var(--purple); color: var(--purple); }
-  .btn-log-more:disabled { opacity: 0.5; cursor: not-allowed; }
-
-  .log-entry {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 12px; margin-bottom: 0.5rem; overflow: hidden;
-    box-shadow: var(--shadow); transition: border-color 0.2s;
-  }
-  .log-entry:hover { border-color: var(--purple-border); }
-  .log-entry-header {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0.75rem 1rem; cursor: pointer; gap: 0.5rem;
-  }
-  .log-entry-info { flex: 1; min-width: 0; }
-  .log-entry-date { font-family: var(--mono); font-size: 0.73rem; color: var(--text-dim); margin-bottom: 0.3rem; }
-  .log-entry-summary { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
-  .log-tag {
-    padding: 0.15rem 0.55rem; border-radius: 20px;
-    font-size: 0.7rem; font-weight: 700;
-  }
-  .log-tag.tag-prereg { background: var(--purple-bg); color: var(--purple); border: 1px solid var(--purple-border); }
-  .log-tag.tag-count  { background: #eff6ff; color: var(--blue); border: 1px solid #bfdbfe; }
-  .log-tag.tag-amount { background: var(--gold-bg); color: var(--gold); border: 1px solid #fde68a; }
-  .log-tag.tag-employee { background: #f0fdf4; color: var(--success); border: 1px solid var(--success-border); }
-  .log-entry-right { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
-  .log-toggle { color: var(--text-dim); font-size: 0.75rem; transition: transform 0.2s; }
-  .log-entry.open .log-toggle { transform: rotate(90deg); }
-
-  .log-entry-details { display: none; border-top: 1px solid var(--border); }
-  .log-entry.open .log-entry-details { display: block; }
-  .log-detail-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 0.5rem 1rem; font-size: 0.8rem; border-bottom: 1px solid var(--border);
-  }
-  .log-detail-row:last-child { border-bottom: none; }
-  .log-detail-name { font-family: var(--mono); font-weight: 600; color: var(--text); }
-  .log-detail-courier { font-size: 0.72rem; color: var(--pink); font-weight: 600; margin-right: 0.4rem; }
-  .log-detail-id { font-size: 0.7rem; color: var(--text-dim); margin-right: 0.3rem; }
-  .log-detail-amt { font-family: var(--mono); font-size: 0.78rem; color: var(--gold); font-weight: 700; }
-
-  .log-sync-status { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 20px; font-weight: 700; }
-  .log-sync-status.synced  { color: var(--success); background: var(--success-bg); border: 1px solid var(--success-border); }
-  .log-sync-status.local   { color: var(--gold);    background: var(--gold-bg);    border: 1px solid #fde68a; }
-  .log-sync-status.loading { color: var(--purple);  background: var(--purple-bg);  border: 1px solid var(--purple-border); }
+  /* CSS السجل القديم (بطاقات .log-entry) اتشال — السجل بقى جدول
+     على المعيار الموحّد. الشكل القديم مهجور (Standards #26). */
 
   /* ── Divider ── */
   .divider { height: 1px; background: var(--border); margin: 1rem 0; }
@@ -545,6 +656,8 @@
     </div>
   </div>
 
+  <div class="tool-col">
+
   <!-- Order Lookup -->
   <div class="card">
     <div class="card-title">🔍 استعلام عن الأوردر</div>
@@ -632,20 +745,150 @@
     <div class="result-actions" id="resultActions" style="display:none;"></div>
   </div>
 
-  <!-- Log -->
-  <div class="log-section">
-    <div class="log-header">
-      <h2>📋 سجل التسجيل المسبق <span class="log-sync-status synced" id="logSyncStatus">D1</span></h2>
-      <div class="log-actions">
-        <button class="log-btn" onclick="exportLogXLSX()" title="تصدير XLSX">⬇️</button>
-        <button class="log-btn" onclick="refreshLog()" title="تحديث من D1">🔄</button>
+  </div>
+  <!-- /tool-col -->
+
+  <!-- ══════════════════════════════════════════════════════
+       §LOG — سجل التسجيل المسبق (القسم الموحّد: فلاتر + جدول)
+       المعيار: references/data-table-standard.md
+       الفلترة والترتيب والعدّ كلهم server-side — السجل مقسّم صفحات،
+       والفلترة في المتصفح كانت هتخلي "النتائج" تعدّ الصفحة مش القاعدة.
+       ══════════════════════════════════════════════════════ -->
+  <div class="unified-section">
+
+    <div class="flt-header" onclick="toggleFilters()">
+      <div class="flt-header-right">
+        <span class="flt-toggle open" id="fltToggleIcon">▲</span>
+        <svg class="flt-icon" id="fltIcon" viewBox="0 0 36 24" fill="none" stroke="currentColor"
+             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="2 3 13 3 8.3 10.2 8.3 19 6.7 19 6.7 10.2 2 3"></polygon>
+          <line x1="18" y1="5" x2="33" y2="5"></line>
+          <line x1="18" y1="11" x2="29" y2="11"></line>
+          <line x1="18" y1="17" x2="25" y2="17"></line>
+        </svg>
+      </div>
+      <button class="clear-btn inactive" id="clearAllBtn"
+              onclick="event.stopPropagation(); clearAllFilters();">✕ مسح كل الفلاتر</button>
+    </div>
+
+    <div class="flt-body" id="fltBody">
+
+      <!-- صف واحد: بحث ← فترة سريعة ← من ← إلى ← الموظف -->
+      <div class="flt-row">
+        <div class="flt-g" style="min-width:240px;">
+          <span class="flt-label">بحث برقم الأوردر أو الملاحظات</span>
+          <div class="search-wrap">
+            <input type="text" class="search-input" id="searchInput" oninput="onSearchInput(this)">
+            <span class="search-icon">🔍</span>
+          </div>
+        </div>
+
+        <div class="flt-g">
+          <span class="flt-label">فترة سريعة</span>
+          <div class="range-preset-wrap" id="rangePresetWrap">
+            <button class="range-preset-btn" id="rangePresetBtn" onclick="toggleRangePresetMenu(event)">
+              <span id="rangePresetLabel">⚡ اختار فترة</span><span>▾</span>
+            </button>
+            <div class="range-preset-menu" id="rangePresetMenu">
+              <div class="range-preset-clear-row">
+                <button onclick="clearRangePreset()">✕ مسح الاختيار</button>
+              </div>
+              <div class="range-preset-item" data-preset="today"     onclick="applyRangePreset('today')"><span>اليوم</span><span class="pr-check">✓</span></div>
+              <div class="range-preset-item" data-preset="yesterday" onclick="applyRangePreset('yesterday')"><span>أمس</span><span class="pr-check">✓</span></div>
+              <div class="range-preset-sep"></div>
+              <div class="range-preset-item" data-preset="last7"  onclick="applyRangePreset('last7')"><span>آخر 7 أيام</span><span class="pr-check">✓</span></div>
+              <div class="range-preset-item" data-preset="last30" onclick="applyRangePreset('last30')"><span>آخر 30 يوم</span><span class="pr-check">✓</span></div>
+              <div class="range-preset-sep"></div>
+              <div class="range-preset-item" data-preset="thisMonth" onclick="applyRangePreset('thisMonth')"><span>الشهر الحالي</span><span class="pr-check">✓</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flt-g">
+          <span class="flt-label">من تاريخ</span>
+          <div class="range-date-wrap"><input type="date" id="rangeDateFrom" onclick="this.showPicker&&this.showPicker();" onchange="onDateChanged()"></div>
+        </div>
+        <div class="flt-g">
+          <span class="flt-label">إلى تاريخ</span>
+          <div class="range-date-wrap"><input type="date" id="rangeDateTo" onclick="this.showPicker&&this.showPicker();" onchange="onDateChanged()"></div>
+        </div>
+
+        <div class="flt-g">
+          <span class="flt-label">الموظف</span>
+          <div class="ms-wrap" id="msWrap-emp">
+            <button class="ms-btn" id="msBtn-emp" onclick="msToggle('emp')">
+              <span id="msBtnLabel-emp">كل الموظفين</span><span class="ms-arrow">▾</span>
+            </button>
+            <div class="ms-menu" id="msMenu-emp">
+              <div class="ms-ftr-top">
+                <button class="ms-ftr-clear" onclick="msClear('emp')">مسح الاختيار</button>
+                <span class="ms-ftr-count" id="msFtrCount-emp"></span>
+              </div>
+              <div class="ms-search-wrap">
+                <input type="text" class="ms-search" id="msSearch-emp" oninput="msFilterList('emp', this.value)">
+              </div>
+              <div class="ms-selectall-row" onclick="msToggleSelectAll('emp')">
+                <input type="checkbox" id="msSelectAll-emp" onclick="event.stopPropagation()" onchange="msToggleSelectAll('emp', this.checked)">
+                <span id="msSelectAllLabel-emp">تحديد الكل</span>
+              </div>
+              <div class="ms-list" id="msList-emp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chips — سطر لكل فلتر، اسم الفلتر مرة واحدة في أوله -->
+      <div class="ms-chips-row" id="chipsRow-emp"></div>
+      <div class="ms-chips-row" id="chipsRow-date"></div>
+
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="tbl-bar" onclick="toggleTable()">
+      <div class="tbl-bar-right">
+        <span class="tbl-toggle open" id="tblToggleIcon">▲</span>
+        <div class="results-wrap">
+          <span class="results-label">النتائج:</span>
+          <span class="results-count" id="filteredCount">—</span>
+        </div>
+      </div>
+      <div class="tbl-bar-left">
+        <button class="act-btn refresh" onclick="event.stopPropagation(); refreshLog();">↺ تحديث</button>
+        <button class="act-btn export"  onclick="event.stopPropagation(); exportLogXLSX();">⬇ تصدير XLSX</button>
       </div>
     </div>
-    <div id="logExportWarn" class="export-warn" style="display:none;"></div>
-    <div class="log-list" id="logList">
-      <div class="log-empty">اضغط تحديث لعرض السجل</div>
+
+    <div class="tbl-body-wrap" id="tblBodyWrap">
+      <div id="logExportWarn" class="export-warn" style="display:none;margin:12px 16px 0;"></div>
+      <div class="tbl-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th class="sortable-th" data-sort-key="timestamp"   onclick="toggleSort('timestamp')">التاريخ<span class="sort-icon" data-sort-key="timestamp"></span></th>
+            <th class="sortable-th" data-sort-key="time"        onclick="toggleSort('time')">الوقت<span class="sort-icon" data-sort-key="time"></span></th>
+            <th class="sortable-th" data-sort-key="employee"    onclick="toggleSort('employee')">الموظف<span class="sort-icon" data-sort-key="employee"></span></th>
+            <th class="sortable-th" data-sort-key="order_name"  onclick="toggleSort('order_name')">رقم الأوردر<span class="sort-icon" data-sort-key="order_name"></span></th>
+            <th class="sortable-th" data-sort-key="value_after" onclick="toggleSort('value_after')">المبلغ (EGP)<span class="sort-icon" data-sort-key="value_after"></span></th>
+            <th>الشحن (EGP)</th>
+            <th>تحصيل المندوب</th>
+            <th>المندوب</th>
+            <th>المنتجات</th>
+            <th>النتيجة</th>
+          </tr></thead>
+          <tbody id="tblBody">
+            <tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض السجل</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-row" id="paginationRow" style="display:none;">
+        <button class="page-btn" id="btnPrevPage" onclick="goPage(-1)">→ السابق</button>
+        <span class="page-info" id="pageInfo"></span>
+        <button class="page-btn" id="btnNextPage" onclick="goPage(1)">التالي ←</button>
+      </div>
     </div>
+
   </div>
+  <!-- /§LOG -->
 
 </div>
 
@@ -710,7 +953,7 @@
             <tr><td><code>preview</code></td><td>جلب بيانات الأوردر + هل مسجل مسبقًا</td></tr>
             <tr><td><code>preRegister</code></td><td>تسجيل الدفع + KV + ميتافيلد + D1</td></tr>
             <tr><td><code>checkPending / clearPending / listPending</code></td><td>API داخلي لـ cod-payment-center-worker</td></tr>
-            <tr><td><code>get_logs / get_logs_count</code></td><td>سجل التسجيلات (tool=cod_preregister)</td></tr>
+            <tr><td><code>get_logs / get_logs_count</code></td><td>سجل التسجيلات — فلترة (<code>employees</code> · <code>search</code> · <code>dateFrom/dateTo</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلهم server-side</td></tr>
             <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
             <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
             <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
@@ -734,7 +977,7 @@
           <ul>
             <li><code>§AUTH-JS</code> — Universal D1 Auth (login بالـ PIN، 4 حالات)</li>
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
-            <li><code>§LOG-JS</code> — سجل D1 مع pagination (تحميل المزيد) + تصدير XLSX عبر ExcelJS</li>
+            <li><code>§LOG-JS</code> — جدول السجل بالمعيار الموحّد: <code>msState</code> (فلتر الموظف) · <code>logParams()</code> (مصدر واحد للفلاتر) · <code>fetchLog()</code> (صفحة + عدّ بالتوازي) · <code>toggleSort</code> · <code>exportLogXLSX</code></li>
             <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
             <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
           </ul>
@@ -756,6 +999,10 @@
             <li>ترتيب <code>preRegister</code> مقصود: الفلوس الأول، وبعدها KV والميتافيلد وD1 — التلاتة دول فشلهم بيدّي <b>⚠ تم جزئيًا</b> مش فشل كامل.</li>
             <li>بيانات العميل (الاسم/التليفون): الواجهة جاهزة لعرضها لو الـ Worker بعتها، لكن <code>preview</code> <b>مش بيرجّعها حاليًا</b> — الصندوق بيفضل مخفي. إضافتها محتاجة صلاحية <code>read_customers</code> على تطبيق شوبيفاي، وقرار صريح لأنها بيانات شخصية.</li>
             <li>الوقت كله بتوقيت القاهرة (UTC+3) عبر <code>toCairo()</code> — مش توقيت جهاز الموظف.</li>
+            <li><b>الفلترة والعدّ والترتيب في السجل كلهم server-side</b> — السجل مقسّم صفحات، والفلترة في المتصفح كانت هتخلي «النتائج» تعدّ الصفحة مش القاعدة.</li>
+            <li>فلتر <code>من/إلى تاريخ</code> بيتقارن بـ <code>timestamp</code> المخزّن (UTC) والعرض بتوقيت القاهرة (+3) — عملية بعد ٩ مساءً ممكن تقع في يوم UTC اللي بعده. مقبول لفلتر بالأيام.</li>
+            <li>الأعمدة المشتقّة من <code>extra</code> (المندوب · الشحن · المنتجات) <b>مش قابلة للترتيب</b> — مش أعمدة في جدول D1، عشان كده مالهاش سهم ترتيب.</li>
+            <li><b>بيانات العميل عرض فقط.</b> بتيجي من <code>preview</code> (محتاجة صلاحية <code>read_customers</code>) وبتتعرض في الكارت ونافذة التأكيد — <b>وممنوع</b> تدخل <code>writeLog</code> أو التصدير.</li>
           </ul>
         </div>
       </details>
@@ -777,7 +1024,21 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.1.0</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.2.0</span>
+          <span class="cl-ver-date">01-09-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>سجل التسجيل المسبق بقى <b>جدول</b> بالمعيار الموحّد بدل البطاقات — فلاتر (بحث · فترة · موظف) + ترتيب على الأعمدة + صفحات + صف «النتائج»</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>عرض الأداة بقى 1200px (Tier M) — الجدول محتاج العرض. كارت الأوردر نفسه فضل ضيّق</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>اسم العميل وتليفونه بقوا بيظهروا في كارت الأوردر وفي نافذة التأكيد (عرض فقط — <b>مش</b> بيتسجّلوا في D1 ولا في التصدير)</span></li>
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span>الفلترة والعدّ والترتيب كلهم من السيرفر — قبل كده الترتيب كان هيرتّب الصفحة المعروضة بس و«النتائج» كانت هتعدّ 100 مش الإجمالي</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>تصدير XLSX بقى فيه الموظف وتحصيل المندوب والمنتجات، وبيحترم نفس الفلاتر المعروضة</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.1.0</span>
           <span class="cl-ver-date">01-09-2026</span>
         </div>
         <ul class="cl-items">
@@ -843,10 +1104,10 @@
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.1.0';
+  const TOOL_VERSION = '2.2.0';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
-  const MIN_WORKER_VERSION = '2.1.0';
+  const MIN_WORKER_VERSION = '2.2.0';   // ضافت sortKey/sortDir وبيانات العميل
 
   // الرابط مش سر — ثابت هنا بدل حقل إعدادات (html-builder Standards #28)
   const WORKER_URL = 'https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev';
@@ -1214,8 +1475,9 @@
           showToast('⚠️ تم جزئيًا — فيه خطوة ما تمّتش، راجع التفاصيل', 'warn', 6000);
         }
         $('orderInput').value = '';
-        // ماتضيفش صف محلي لو D1 ما كتبش — الصف ده بيدّي انطباع إن السجل اتكتب
-        if (data.logged !== false) prependLocalLogRow(o);
+        // اقرا السجل من D1 بدل ما تحقن صف محلي — الصف المحقون كان بيدّي
+        // انطباع إن السجل اتكتب، وكان بيكسر عدّاد "النتائج" (server-side).
+        if (logLoadedOnce) fetchLog();
       } else {
         showResult('error', 'فشل التسجيل', data.error || 'خطأ غير معروف', data.actions || [], data.warnings || []);
         playBeep('error');
@@ -1272,27 +1534,38 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  // LOG — D1-backed مباشرة (get_logs/get_logs_count على نفس الـ Worker،
-  // مفيش bridge على أداة تانية خالص دلوقتي)
+  // §LOG-JS — سجل D1 على المعيار الموحّد (data-table-standard.md)
+  //
+  // ⚠️ الفلترة والعدّ والترتيب كلهم **server-side**. السجل مقسّم صفحات،
+  // فالفلترة في المتصفح كانت هتخلي "النتائج" تعدّ الصفحة (100) مش القاعدة،
+  // والصفحة التانية تيجي بلا فلترة، والتصدير ينزّل غير المعروض — كله في السكوت.
+  // (Standards #31 · Log Filter Model v2)
   // ══════════════════════════════════════════════════════════════
-  let logRows = [], logOffset = 0, logHasMore = true, logLoadingMore = false, logLoadedOnce = false;
-  const LOG_PAGE_SIZE = 50;
+  const LOG_PAGE_SIZE = 100;
+  let logRows = [], logTotalCount = 0, logCurrentPage = 1;
+  let logLoadedOnce = false, logLoading = false;
 
-  // ⚠️ كان بيستخدم توقيت جهاز الموظف — جهاز بتوقيت غلط = سجل بتواريخ غلط.
-  // القاعدة الموحّدة: toCairo() + getUTC* دايمًا (html-builder قاعدة 10).
+  // ── التاريخ والوقت: توقيت القاهرة دايمًا (html-builder قاعدة 10) ──
   function toCairo(iso) { return new Date(new Date(iso).getTime() + 3 * 60 * 60 * 1000); }
   const _pad = n => String(n).padStart(2, '0');
 
-  function formatDateTime(iso) {
+  function formatDate(iso) {
+    if (!iso) return '—';
+    const d = toCairo(iso);
+    return `📅 ${_pad(d.getUTCDate())}/${_pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+  }
+  function formatTimeOnly(iso) {
     if (!iso) return '—';
     const d = toCairo(iso);
     let h = d.getUTCHours();
     const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
     h = h % 12 || 12;
-    return `📅 ${_pad(d.getUTCDate())}/${_pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`
-         + ` 🕐 ${_pad(h)}:${_pad(d.getUTCMinutes())} ${ampm}`;
+    return `🕐 ${_pad(h)}:${_pad(d.getUTCMinutes())} ${ampm}`;
   }
-
+  function formatDateTime(iso) {
+    if (!iso) return '—';
+    return `${formatDate(iso)} ${formatTimeOnly(iso)}`;
+  }
   // عمود التاريخ في XLSX — نفس التوقيت بدون إيموجي
   function formatDateForExport(iso) {
     if (!iso) return '';
@@ -1300,11 +1573,263 @@
     return `${_pad(d.getUTCDate())}/${_pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} `
          + `${_pad(d.getUTCHours())}:${_pad(d.getUTCMinutes())}`;
   }
+  function ymd(d) {
+    return `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
+  }
 
-  // مصدر واحد لباراميترات الفلاتر — get_logs و get_logs_export بيستخدموه،
-  // فمفيش احتمال إن التصدير ينزّل غير المعروض. (الأداة لسه مفيهاش فلاتر سجل،
-  // فالدالة فاضية دلوقتي — بس المكان اللي أي فلتر جديد بيتضاف فيه مرة واحدة.)
-  function logParams() { return {}; }
+  // ── حالة الفلاتر ────────────────────────────────────────────────
+  // فلتر واحد multi-select (الموظف). مفيش فلتر "نوع العملية" لأن الأداة بتكتب
+  // نوع واحد بس (preregister) — و login/logout مستبعدين server-side في SQL.
+  const msState = {
+    emp: { items: [], selected: new Set(), search: '' },
+  };
+  const filterLabels = { emp: 'الموظف' };
+  const empNames = {};              // username → display_name للعرض في الجدول
+
+  let searchTerm = '';
+  let dateFrom = null, dateTo = null;
+  let dateFilterActive = false;     // الحالة المحايدة = بلا فلتر تاريخ خالص
+  let activePreset = '';
+
+  // ── طي القسمين ──────────────────────────────────────────────────
+  let fltOpen = true, tblOpen = true;
+  function toggleFilters() {
+    fltOpen = !fltOpen;
+    $('fltBody').classList.toggle('collapsed', !fltOpen);
+    $('fltToggleIcon').classList.toggle('open', fltOpen);
+  }
+  function toggleTable() {
+    tblOpen = !tblOpen;
+    $('tblBodyWrap').classList.toggle('collapsed', !tblOpen);
+    $('tblToggleIcon').classList.toggle('open', tblOpen);
+  }
+
+  // ⚠️ !!value مش !== null — الخاصية اللي مش موجودة قيمتها undefined،
+  // و undefined !== null بترجع true فالفلتر بيفضل "مفعّل" للأبد.
+  function anyFilterActive() {
+    const msActive = Object.keys(msState).some(k =>
+      msState[k].selected.size > 0 || !!msState[k].rangeFrom || !!msState[k].rangeTo);
+    return msActive || searchTerm.trim().length > 0 || dateFilterActive;
+  }
+  function updateFilterIconState() {
+    const active = anyFilterActive();
+    $('fltIcon').classList.toggle('active', active);
+    $('clearAllBtn').classList.toggle('inactive', !active);
+  }
+
+  // ── Multi-select ────────────────────────────────────────────────
+  function msRenderList(key) {
+    const st = msState[key];
+    const listEl = $(`msList-${key}`);
+    const q = st.search.trim().toLowerCase();
+    const visible = q ? st.items.filter(it => it.label.toLowerCase().includes(q)) : st.items;
+    listEl.innerHTML = !visible.length
+      ? '<div class="ms-empty">لا توجد نتائج مطابقة للبحث</div>'
+      : visible.map(it => {
+          const checked = st.selected.has(it.value);
+          return `<div class="ms-item ${checked ? 'checked' : ''}" onclick="msToggleItem('${key}','${esc(it.value).replace(/'/g, "\\'")}')">
+            <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); msToggleItem('${key}','${esc(it.value).replace(/'/g, "\\'")}')">
+            <span class="ms-item-label">${esc(it.label)}</span>
+          </div>`;
+        }).join('');
+    const allVisibleChecked = visible.length > 0 && visible.every(it => st.selected.has(it.value));
+    const saEl = $(`msSelectAll-${key}`);   if (saEl)  saEl.checked = allVisibleChecked;
+    const saLbl = $(`msSelectAllLabel-${key}`);
+    if (saLbl) saLbl.textContent = q ? `تحديد كل نتائج البحث (${visible.length})` : 'تحديد الكل';
+    msUpdateButtonLabel(key);
+    const cnt = $(`msFtrCount-${key}`);     if (cnt) cnt.textContent = `${st.selected.size} مختار`;
+  }
+
+  function msUpdateButtonLabel(key) {
+    const st = msState[key], btn = $(`msBtn-${key}`), lbl = $(`msBtnLabel-${key}`);
+    const n = st.selected.size;
+    btn.classList.toggle('has-selection', n > 0);
+    if (n === 0)      lbl.textContent = 'كل الموظفين';
+    else if (n === 1) lbl.textContent = (st.items.find(i => i.value === [...st.selected][0]) || {}).label || [...st.selected][0];
+    else              lbl.innerHTML = `${n} محدد <span class="ms-count">${n}</span>`;
+  }
+
+  function msToggle(key) {
+    const menu = $(`msMenu-${key}`), btn = $(`msBtn-${key}`);
+    const willOpen = !menu.classList.contains('open');
+    Object.keys(msState).forEach(k => {
+      $(`msMenu-${k}`).classList.remove('open');
+      $(`msBtn-${k}`).classList.remove('open');
+    });
+    if (willOpen) { menu.classList.add('open'); btn.classList.add('open'); }
+  }
+
+  function msToggleItem(key, value) {
+    const st = msState[key];
+    st.selected.has(value) ? st.selected.delete(value) : st.selected.add(value);
+    msRenderList(key); renderChips(); onLogFilterChange();
+  }
+
+  function msToggleSelectAll(key, forceState) {
+    const st = msState[key];
+    const q = st.search.trim().toLowerCase();
+    const visible = q ? st.items.filter(it => it.label.toLowerCase().includes(q)) : st.items;
+    const allChecked = visible.length > 0 && visible.every(it => st.selected.has(it.value));
+    const shouldCheck = forceState !== undefined ? forceState : !allChecked;
+    visible.forEach(it => shouldCheck ? st.selected.add(it.value) : st.selected.delete(it.value));
+    msRenderList(key); renderChips(); onLogFilterChange();
+  }
+
+  function msFilterList(key, value) { msState[key].search = value; msRenderList(key); }
+  function msClear(key) { msState[key].selected.clear(); msRenderList(key); renderChips(); onLogFilterChange(); }
+
+  document.addEventListener('click', (e) => {
+    // ⚠️ اختيار عنصر بيعمل re-render للقائمة، فالعنصر اللي اتضغط بيتشال من الـ DOM
+    // قبل ما الحدث يوصل هنا — و wrap.contains(detached) بترجّع false فالقائمة
+    // كانت بتتقفل بعد أول اختيار، يعني multi-select من اسمه بس.
+    // الحارس: تجاهل أي هدف مش موجود في الصفحة أصلاً.
+    if (!document.contains(e.target)) return;
+    Object.keys(msState).forEach(k => {
+      const wrap = $(`msWrap-${k}`);
+      if (wrap && !wrap.contains(e.target)) {
+        $(`msMenu-${k}`).classList.remove('open');
+        $(`msBtn-${k}`).classList.remove('open');
+      }
+    });
+  });
+
+  // ── Chips — اسم الفلتر مرة واحدة في أول السطر ────────────────────
+  function renderChips() {
+    Object.keys(msState).forEach(key => {
+      const row = $(`chipsRow-${key}`);
+      if (!row) return;
+      const chips = [...msState[key].selected].map(val => {
+        const item = msState[key].items.find(it => it.value === val);
+        const v = esc(item ? item.label : val);
+        return `<span class="ms-chip">${v}<button onclick="msToggleItem('${key}','${esc(val).replace(/'/g, "\\'")}')">✕</button></span>`;
+      }).join('');
+      row.innerHTML = chips ? `<span class="chips-label">${filterLabels[key]}:</span>${chips}` : '';
+    });
+    const dRow = $('chipsRow-date');
+    if (dRow) {
+      dRow.innerHTML = dateFilterActive
+        ? `<span class="chips-label">الفترة:</span><span class="ms-chip">${esc(dateFrom || '…')} → ${esc(dateTo || '…')}`
+          + `<button onclick="clearRangePreset()">✕</button></span>`
+        : '';
+    }
+  }
+
+  // ── البحث ───────────────────────────────────────────────────────
+  let searchTimer;
+  function onSearchInput(el) {
+    el.classList.toggle('has-value', el.value.trim().length > 0);
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { searchTerm = el.value; onLogFilterChange(); }, 400);
+  }
+
+  // ── الفترة السريعة — بلا افتراضي ────────────────────────────────
+  function toggleRangePresetMenu(e) { e.stopPropagation(); $('rangePresetMenu').classList.toggle('open'); }
+  document.addEventListener('click', (e) => {
+    const wrap = $('rangePresetWrap');
+    if (wrap && !wrap.contains(e.target)) $('rangePresetMenu').classList.remove('open');
+  });
+
+  const presetLabels = { today:'اليوم', yesterday:'أمس', last7:'آخر 7 أيام', last30:'آخر 30 يوم', thisMonth:'الشهر الحالي' };
+  function presetRange(preset) {
+    const now = new Date(), from = new Date(), to = new Date();
+    if (preset === 'yesterday')      { from.setDate(now.getDate() - 1); to.setDate(now.getDate() - 1); }
+    else if (preset === 'last7')     { from.setDate(now.getDate() - 6); }
+    else if (preset === 'last30')    { from.setDate(now.getDate() - 29); }
+    else if (preset === 'thisMonth') { from.setDate(1); }
+    return { from: ymd(from), to: ymd(to) };
+  }
+
+  function applyRangePreset(preset) {
+    activePreset = preset;
+    const r = presetRange(preset);
+    dateFrom = r.from; dateTo = r.to;
+    dateFilterActive = true;   // أي فترة يختارها المستخدم — حتى "اليوم" — فلتر مفعّل
+    $('rangeDateFrom').value = r.from;
+    $('rangeDateTo').value   = r.to;
+    $('rangePresetLabel').textContent = `⚡ ${presetLabels[preset]}`;
+    $('rangePresetBtn').classList.add('has-preset');
+    document.querySelectorAll('.range-preset-item').forEach(el => el.classList.toggle('active', el.dataset.preset === preset));
+    $('rangePresetMenu').classList.remove('open');
+    renderChips(); onLogFilterChange();
+  }
+
+  function onDateChanged() {
+    activePreset = '';
+    dateFrom = $('rangeDateFrom').value || null;
+    dateTo   = $('rangeDateTo').value   || null;
+    dateFilterActive = !!(dateFrom || dateTo);
+    $('rangePresetLabel').textContent = '⚡ اختار فترة';
+    $('rangePresetBtn').classList.toggle('has-preset', dateFilterActive);
+    document.querySelectorAll('.range-preset-item').forEach(el => el.classList.remove('active'));
+    renderChips(); onLogFilterChange();
+  }
+
+  function resetDateFilter() {
+    activePreset = ''; dateFrom = null; dateTo = null; dateFilterActive = false;
+    $('rangeDateFrom').value = ''; $('rangeDateTo').value = '';
+    $('rangePresetLabel').textContent = '⚡ اختار فترة';
+    $('rangePresetBtn').classList.remove('has-preset');
+    document.querySelectorAll('.range-preset-item').forEach(el => el.classList.remove('active'));
+  }
+  function clearRangePreset() {
+    resetDateFilter(); $('rangePresetMenu').classList.remove('open');
+    renderChips(); onLogFilterChange();
+  }
+
+  function clearAllFilters() {
+    Object.keys(msState).forEach(k => { msState[k].selected.clear(); msState[k].search = ''; 
+      const sEl = $(`msSearch-${k}`); if (sEl) sEl.value = '';
+      msRenderList(k); });
+    $('searchInput').value = ''; searchTerm = '';
+    $('searchInput').classList.remove('has-value');
+    resetDateFilter();
+    renderChips();
+    onLogFilterChange();
+  }
+
+  // ── الترتيب — server-side، ٣ حالات ──────────────────────────────
+  // ⚠️ مش client-side: السجل مقسّم صفحات، فترتيب الصفحة المعروضة بس بيدّي
+  // ترتيب كذّاب (أكبر مبلغ ممكن يكون في صفحة تانية أصلاً).
+  let sortState = { key: null, dir: null };
+  function toggleSort(key) {
+    if (sortState.key !== key)          { sortState.key = key; sortState.dir = 'asc'; }
+    else if (sortState.dir === 'asc')   { sortState.dir = 'desc'; }
+    else                                { sortState.key = null; sortState.dir = null; }
+    updateSortHeaderUI();
+    logCurrentPage = 1;
+    fetchLog();
+  }
+  function updateSortHeaderUI() {
+    document.querySelectorAll('.sort-icon').forEach(el => {
+      const isActive = sortState.key === el.dataset.sortKey;
+      el.textContent = isActive ? (sortState.dir === 'asc' ? '▲' : '▼') : '';
+      el.classList.toggle('active', isActive);
+    });
+    document.querySelectorAll('.sortable-th').forEach(th => {
+      th.classList.toggle('sorted', th.dataset.sortKey === sortState.key);
+    });
+  }
+
+  // ── مصدر واحد لباراميترات الفلاتر — التلات نداءات بتستخدمه ───────
+  function logParams() {
+    const p = {};
+    const employees = [...msState.emp.selected];
+    if (employees.length) p.employees = employees.join(',');
+    if (searchTerm.trim()) p.search = searchTerm.trim();
+    // ⚠️ dateFrom/dateTo بيتقارنوا بـ timestamp المخزّن (UTC) والعرض بتوقيت
+    // القاهرة (+3). عملية بعد ٩ مساءً بتوقيت القاهرة ممكن تقع في يوم UTC اللي
+    // بعده. مقبول لفلتر بالأيام — بس مكتوب عشان مايتكتشفش كباج بعدين.
+    if (dateFilterActive && dateFrom) p.dateFrom = dateFrom;
+    if (dateFilterActive && dateTo)   p.dateTo   = dateTo;
+    return p;
+  }
+
+  function onLogFilterChange() {
+    updateFilterIconState();
+    clearExportWarn();
+    logCurrentPage = 1;
+    if (logLoadedOnce) fetchLog();
+  }
 
   function clearExportWarn() {
     const w = $('logExportWarn');
@@ -1313,83 +1838,103 @@
 
   async function refreshLog() {
     if (!isConfigured()) { showToast('الأداة غير مضبوطة', 'error'); openSettings(); return; }
+    logLoadedOnce = true; logCurrentPage = 1;
     clearExportWarn();
-    logRows = []; logOffset = 0; logHasMore = true; logLoadedOnce = true;
-    $('logSyncStatus').className = 'log-sync-status loading'; $('logSyncStatus').textContent = '⏳ جاري...';
-    $('logList').innerHTML = '<div class="log-empty">جاري التحميل...</div>';
-    await loadMoreLog();
+    await fetchLog();
   }
 
-  async function loadMoreLog() {
-    if (logLoadingMore || !logHasMore) return;
-    logLoadingMore = true;
+  async function fetchLog() {
+    if (logLoading) return;
+    logLoading = true;
+    const base   = logParams();
+    const offset = (logCurrentPage - 1) * LOG_PAGE_SIZE;
+    // 'time' و 'timestamp' نفس المصدر — عمودين عرض، مفتاح ترتيب واحد
+    const sortKey = sortState.key === 'time' ? 'timestamp' : sortState.key;
+
+    $('tblBody').innerHTML = '<tr class="empty-row"><td colspan="10">جاري التحميل...</td></tr>';
     try {
-      const data = await apiGet('get_logs', { ...logParams(), limit: LOG_PAGE_SIZE, offset: logOffset });
-      const rows = data.entries || [];
-      logRows = logRows.concat(rows);
-      logOffset += rows.length;
-      logHasMore = rows.length === LOG_PAGE_SIZE;
-      $('logSyncStatus').className = 'log-sync-status synced'; $('logSyncStatus').textContent = '☁️ D1';
+      const [pageData, countData] = await Promise.all([
+        apiGet('get_logs', { ...base, limit: LOG_PAGE_SIZE, offset,
+                             ...(sortKey ? { sortKey, sortDir: sortState.dir } : {}) }),
+        apiGet('get_logs_count', base),
+      ]);
+      logRows = pageData.entries || [];
+      logTotalCount = countData.total || 0;
+      renderLogTable();
+      renderPagination();
     } catch (err) {
-      $('logSyncStatus').className = 'log-sync-status local'; $('logSyncStatus').textContent = '⚠️ خطأ';
+      $('tblBody').innerHTML = `<tr class="empty-row"><td colspan="10" style="color:var(--red)">فشل تحميل السجل — ${esc(err.message)}</td></tr>`;
+      $('filteredCount').textContent = '—';
+      $('paginationRow').style.display = 'none';
       showToast('فشل تحميل السجل: ' + err.message, 'error');
     }
-    logLoadingMore = false;
-    renderLog();
+    logLoading = false;
   }
 
-  // عرض محلي فوري بعد أي تسجيل ناجح (D1 اتكتب فيه أصلاً وقت preRegister نفسه)
-  function prependLocalLogRow(o) {
-    logRows.unshift({
-      id: 'local-' + Date.now(), timestamp: new Date().toISOString(),
-      order_id: o.id, order_name: o.orderName, value_after: o.amount.toFixed(2),
-      extra: JSON.stringify({ courier: o.courier, lineItems: o.lineItems }),
-      employee: currentEmployee ? currentEmployee.username : null,
-    });
-    renderLog();
-  }
+  function renderLogTable() {
+    const body = $('tblBody');
+    $('filteredCount').textContent = logTotalCount.toLocaleString('en-US');
 
-  function renderLog() {
-    const container = $('logList');
     if (!logRows.length) {
-      container.innerHTML = logLoadedOnce ? '<div class="log-empty">لا توجد تسجيلات مسبقة</div>' : '<div class="log-empty">اضغط تحديث لعرض السجل</div>';
+      body.innerHTML = `<tr class="empty-row"><td colspan="10">${
+        anyFilterActive() ? 'لا توجد نتائج تطابق الفلاتر' : 'لا توجد تسجيلات مسبقة'}</td></tr>`;
       return;
     }
 
-    container.innerHTML = logRows.map(row => {
+    body.innerHTML = logRows.map(row => {
       let extra = {};
       try { extra = row.extra ? JSON.parse(row.extra) : {}; } catch {}
-      return `<div class="log-entry">
-        <div class="log-entry-header" onclick="this.closest('.log-entry').classList.toggle('open')">
-          <div class="log-entry-info">
-            <div class="log-entry-date">${formatDateTime(row.timestamp)}</div>
-            <div class="log-entry-summary">
-              <span class="log-tag tag-prereg">📋 ${orderLink(row.order_name, row.order_id)}</span>
-              ${extra.courier ? `<span class="log-tag" style="background:#fdf2f8;color:var(--pink);border:1px solid #fbcfe8">👤 ${esc(extra.courier)}</span>` : ''}
-              ${row.value_after ? `<span class="log-tag tag-amount">${parseFloat(row.value_after).toLocaleString('en-US',{minimumFractionDigits:2})} EGP</span>` : ''}
-              ${row.employee ? `<span class="log-tag tag-employee">✍️ ${esc(row.employee)}</span>` : ''}
-              ${extra.result === 'warning' ? `<span class="log-tag" style="background:var(--gold-bg);color:var(--gold);border:1px solid #fde68a">⚠ تم جزئيًا</span>` : ''}
-            </div>
-          </div>
-          <span class="log-toggle">▶</span>
-        </div>
-        <div class="log-entry-details">
-          ${(extra.lineItems || []).map(li => `
-            <div class="log-detail-row">
-              <span class="log-detail-name">${esc(li.sku)}</span>
-              <span class="log-detail-amt">${esc(li.quantity)} × ${esc(li.unitPrice)}</span>
-            </div>`).join('') || '<div class="log-detail-row"><span class="log-detail-name" style="color:var(--text-dim)">لا توجد تفاصيل منتجات</span></div>'}
-        </div>
-      </div>`;
-    }).join('') + (logHasMore ? `<button class="btn-log-more" onclick="loadMoreLog()" ${logLoadingMore?'disabled':''}>${logLoadingMore?'جاري التحميل...':'⬇ تحميل المزيد'}</button>` : '');
+
+      const amount   = row.value_after != null ? Number(row.value_after) : null;
+      const shipping = extra.shippingAmount != null ? Number(extra.shippingAmount) : null;
+      const collect  = (amount != null && shipping != null) ? amount - shipping : null;
+      const items    = (extra.lineItems || [])
+        .map(li => `${esc(li.sku)} × ${esc(li.quantity)}`).join('، ');
+
+      // الصفوف الأقدم من Worker v2.1.0 مالهاش extra.result — بتتعرض "—" مش "✓"،
+      // إحنا فعليًا مش عارفين إن كانت كل الخطوات تمّت وقتها.
+      const res = extra.result === 'warning'
+        ? '<span class="res-badge warn">⚠ تم جزئيًا</span>'
+        : extra.result === 'success'
+          ? '<span class="res-badge ok">✓ تم</span>'
+          : '<span class="res-badge none">—</span>';
+
+      return `<tr>
+        <td class="col-num">${formatDate(row.timestamp)}</td>
+        <td class="col-num">${formatTimeOnly(row.timestamp)}</td>
+        <td>${esc(empNames[row.employee] || row.employee || '—')}</td>
+        <td class="col-num">${orderLink(row.order_name, row.order_id)}</td>
+        <td class="col-num">${amount   != null ? fmt(amount)   : '—'}</td>
+        <td class="col-num">${shipping != null ? fmt(shipping) : '—'}</td>
+        <td class="col-num">${collect  != null ? fmt(collect)  : '—'}</td>
+        <td>${extra.courier ? esc(extra.courier) : '—'}</td>
+        <td class="items-cell">${items || '—'}</td>
+        <td>${res}</td>
+      </tr>`;
+    }).join('');
   }
 
-  // ── تصدير XLSX ────────────────────────────────────────────────
-  // ⚠️ بيكلم get_logs_export مش get_logs (اللي مسقوف بـ 100 صف/صفحة)،
-  // وبيقرا cap/total/truncated من الـ Worker — الواجهة ماتكتبش السقف عندها.
+  function renderPagination() {
+    const totalPages = Math.max(1, Math.ceil(logTotalCount / LOG_PAGE_SIZE));
+    $('paginationRow').style.display = totalPages > 1 ? '' : 'none';
+    $('pageInfo').textContent = `صفحة ${logCurrentPage} من ${totalPages}`;
+    $('btnPrevPage').disabled = logCurrentPage <= 1;
+    $('btnNextPage').disabled = logCurrentPage >= totalPages;
+  }
+
+  function goPage(dir) {
+    const totalPages = Math.max(1, Math.ceil(logTotalCount / LOG_PAGE_SIZE));
+    const next = logCurrentPage + dir;
+    if (next < 1 || next > totalPages) return;
+    logCurrentPage = next;
+    fetchLog();
+  }
+
+  // ── تصدير XLSX ──────────────────────────────────────────────────
+  // ⚠️ بيكلم get_logs_export مش get_logs (المسقوف بـ 100 صف/صفحة)، وبنفس
+  // logParams() بالظبط، وبيقرا cap/total/truncated من الـ Worker.
   async function exportLogXLSX() {
     if (!isConfigured()) { showToast('الأداة غير مضبوطة', 'error'); openSettings(); return; }
-    // ExcelJS من CDN — لو ما حمّلش، قول ليه بدل "ExcelJS is not defined"
     if (typeof ExcelJS === 'undefined') {
       showToast('مكتبة التصدير (ExcelJS) ما حمّلتش — راجع الاتصال بالإنترنت وحدّث الصفحة', 'error', 6000);
       return;
@@ -1398,12 +1943,8 @@
     showToast('⏳ جاري تجهيز الملف...', 'ok', 4000);
 
     let data;
-    try {
-      data = await apiGet('get_logs_export', logParams());
-    } catch (err) {
-      showToast('فشل التصدير: ' + err.message, 'error');
-      return;
-    }
+    try { data = await apiGet('get_logs_export', logParams()); }
+    catch (err) { showToast('فشل التصدير: ' + err.message, 'error'); return; }
 
     const entries = data.entries || [];
     if (!entries.length) { showToast('مفيش عمليات للتصدير', 'warn'); return; }
@@ -1413,12 +1954,14 @@
     ws.views = [{ rightToLeft: true }];
     ws.columns = [
       { header: 'التاريخ',        key: 'date',     width: 20 },
+      { header: 'الموظف',         key: 'employee', width: 20 },
       { header: 'رقم الأوردر',    key: 'order',    width: 14 },
       { header: 'Order ID',       key: 'orderId',  width: 18 },
       { header: 'المبلغ (EGP)',   key: 'amount',   width: 14 },
       { header: 'الشحن (EGP)',    key: 'shipping', width: 14 },
+      { header: 'تحصيل المندوب',  key: 'collect',  width: 16 },
       { header: 'المندوب',        key: 'courier',  width: 18 },
-      { header: 'الموظف',         key: 'employee', width: 18 },
+      { header: 'المنتجات',       key: 'items',    width: 40 },
       { header: 'النتيجة',        key: 'result',   width: 12 },
     ];
     ws.getRow(1).font = { bold: true };
@@ -1427,16 +1970,17 @@
     entries.forEach(row => {
       let extra = {};
       try { extra = row.extra ? JSON.parse(row.extra) : {}; } catch {}
+      const amount   = row.value_after != null ? Number(row.value_after) : null;
+      const shipping = extra.shippingAmount != null ? Number(extra.shippingAmount) : null;
       ws.addRow({
         date:     formatDateForExport(row.timestamp),
+        employee: empNames[row.employee] || row.employee || '',
         order:    row.order_name || '',
         orderId:  row.order_id || '',
-        amount:   row.value_after != null ? Number(row.value_after) : null,
-        shipping: extra.shippingAmount != null ? Number(extra.shippingAmount) : null,
+        amount, shipping,
+        collect:  (amount != null && shipping != null) ? amount - shipping : null,
         courier:  extra.courier || '',
-        employee: row.employee || '',
-        // الصفوف القديمة من غير extra.result بتتعرض "—" مش "✓" —
-        // إحنا فعليًا مش عارفين إن كان الفعل تم بالكامل وقتها
+        items:    (extra.lineItems || []).map(li => `${li.sku} × ${li.quantity}`).join('، '),
         result:   extra.result ? (extra.result === 'warning' ? 'تم جزئيًا' : 'تم') : '—',
       });
     });
@@ -1519,7 +2063,11 @@
         const o = document.createElement('option');
         o.value = e.username; o.textContent = e.display_name;
         sel.appendChild(o);
+        empNames[e.username] = e.display_name;   // للعرض في جدول السجل
       });
+      // نفس القايمة بتغذّي فلتر الموظف في السجل — مفيش أسماء hardcoded
+      msState.emp.items = employees.map(e => ({ value: e.username, label: e.display_name }));
+      msRenderList('emp');
       sel.disabled = false;
       status.className = employees.length ? 'login-status info' : 'login-status warn';
       status.textContent = employees.length ? 'اختر الموظف للمتابعة.' : 'لا يوجد موظفون نشطون.';
@@ -1702,6 +2250,7 @@
     if (logged === false) showToast('⚠️ الدخول تم لكن ما اتسجلش في السجل', 'warn', 5000);
     setTimeout(() => $('orderInput')?.focus(), 100);
     checkWorkerVersion();
+    refreshLog();
   }
 
   function doLogout() { showConfirm('تسجيل الخروج؟', performLogout); }
@@ -1714,6 +2263,11 @@
     hideResult();
     $('orderInput').value = '';
     $('activeUserBtn').textContent = '👤 —';
+    logRows = []; logTotalCount = 0; logCurrentPage = 1; logLoadedOnce = false;
+    clearAllFilters();
+    $('tblBody').innerHTML = '<tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض السجل</td></tr>';
+    $('filteredCount').textContent = '—';
+    $('paginationRow').style.display = 'none';
 
     currentEmployee = null;
     loginMode = 'employee';
@@ -1744,7 +2298,10 @@
   updateSettingsBtn();
   updateLoginSettingsBtn();
   loadEmployeesList();
-  renderLog();
+  msRenderList('emp');
+  renderChips();
+  updateFilterIconState();
+  updateSortHeaderUI();
   checkWorkerVersion();
 </script>
 </body>
