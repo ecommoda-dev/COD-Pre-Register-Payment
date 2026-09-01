@@ -2,12 +2,12 @@
 
 # تسجيل الدفع المسبق — COD (`COD-Pre-Register-Payment`)
 
-![version](https://img.shields.io/badge/version-v1.3.0-blue)
+![version](https://img.shields.io/badge/version-v1.4.0-blue)
 
 **بتعمل إيه:** الموظف بيسجّل دفع أوردر COD مسبقًا على شوبيفاي (capture transaction)
 قبل التحصيل الفعلي من المندوب، وبيتحطّ مفتاح "معلّق" في KV لحد ما التحصيل يتم.
 **مين بيستخدمها:** حسابات · تحصيل COD
-**الإصدار:** Worker `v2.3.0` · الواجهة `v2.2.1`   ← الاتنين مستقلين، طبيعي يختلفوا
+**الإصدار:** Worker `v2.4.0` · الواجهة `v2.3.0`   ← الاتنين مستقلين، طبيعي يختلفوا
 
 ## الروابط
 
@@ -55,7 +55,7 @@ Binding : PRE_REG_KV → pre-register-payment-cod-KV (aaeff3d84e2c4e87bc7cce6bfd
 Bindings : DB → ecommoda-dev-logs · PRE_REG_KV → pre-register-payment-cod-KV
 Secrets  : WORKER_SECRET · CLIENT_ID · CLIENT_SECRET
 Vars     : SHOP_DOMAIN     ← من [vars] في wrangler.toml. مفيش LOCATION_ID (الأداة مش أداة مخزون)
-Build watch paths : * (الافتراضي)
+Build watch paths : index.js + wrangler.toml   ← chip منفصل لكل واحد (مضيّقة 01-09-2026)
 ```
 
 ### الترتيب في `get_logs` — whitelist إجباري
@@ -115,8 +115,33 @@ SELECT COUNT(*) AS total_preregister, MAX(timestamp) AS last_row, ROUND(SUM(valu
 > ⚠️ الرقم ده **بعد** تنظيف 31-08-2026 اللي شال 175 صف `preregister` مكرر
 > (`ecommoda-constants` §11 بند 13). أي مقارنة بأرقام أقدم من التاريخ ده هتغلط.
 
+## ⚠️ Build watch paths مضيّقة — بند صيانة دائم
+
+```
+Include paths : index.js  ·  wrangler.toml     ← صندوقين منفصلين، كل واحد ليه ×
+Exclude paths : (فاضي)
+```
+
+معناها إن تعديل `index.html` لوحده **مش** بينشر الـ Worker — وده المطلوب
+(الواجهة بتنشر من GitHub Pages). بس ده بيجيب معاه فخ دائم:
+
+> 🔴 **أي ملف جديد يعتمد عليه الـ Worker لازم يتضاف للـ paths.**
+> `package.json` · فولدر `src/` · أي ملف config — لو اتضاف من غير ما يتحط هنا،
+> الـ Worker هيفضل على نسخة قديمة **من غير أي رسالة ولا build فاشل**.
+> نفس شكل الفخ الخامس في `ecommoda-tool-migration-playbook` §13-ب بالظبط.
+
+⚠️ والحقل ده **chips مش نص**: `index.js wrangler.toml` بمسافة = chip واحد
+بالاسم ده حرفيًا = **مفيش أي push هيبني تاني، للأبد، في صمت**.
+
 ## فخاخ الأداة دي
 
+- 🔴 **حارس عام في نص الـ handler بيبلع كل اللي بعده.** سطر
+  `if (!numericId) return 400 'orderId is required'` كان مكتوب **قبل**
+  `§LOG-ENDPOINTS`، وendpoints السجل كلها GET (يعني `bodyData = {}` و
+  `numericId = null`) — فالتلاتة كانوا بيرجعوا 400 من v2.0.0 ومحدش لاحظ، لأن
+  الواجهة القديمة كانت بتبلع الخطأ في توست. **اتصلّح في v2.4.0** بنقل الحارس
+  جوه `preview` و`preRegister` بس. القاعدة: **الحارس مكانه جوه الـ endpoint
+  اللي محتاجه**، مش سطر عام في نص الـ handler.
 - **الأداة مالية — التسجيل مالوش تراجع.** `preRegister` بيعمل capture حقيقي.
   أي تعديل على المسار ده يتراجع مرتين قبل النشر.
 - **ترتيب العمليات في `preRegister` مقصود:** الفلوس الأول (خطوة ①)، وبعدها KV
@@ -174,12 +199,30 @@ git show b3f7906:index.js
 القاهرة (+3).** عملية بعد ٩ مساءً بتوقيت القاهرة ممكن تقع في يوم UTC اللي بعده.
 مقبول لفلتر بالأيام — بس **مكتوب** عشان مايتكتشفش كباج بعدين.
 
+## التابات
+
+```
+📋 تسجيل الدفع    ← الاستعلام + كارت الأوردر + زرار التسجيل + النتيجة
+📜 سجل العمليات   ← القسم الموحّد (فلاتر + جدول)
+```
+
+`.main-tabs-bar` / `.main-tab-btn` + **Freeze on Scroll**: الهيدر بيتقفل مضغوط
+وشريط التابات بيتحوّل لـ chip فيه قائمة تبديل. الـ toggle بـ **عتبتين**
+(`STICK_ON = 40` / `STICK_OFF = 12`) + `requestAnimationFrame` — العتبة الواحدة
+بتعمل فليكر عالق عند نقطة القفل (باج متحقَّق، `tabs-and-modals.md` §1b).
+
+**السجل lazy** — `get_logs` مابيتنداش غير أول ما الموظف يفتح تاب السجل فعلاً.
+
+## تقارير خارجة عن الأداة
+
+| الملف | إيه ده |
+|---|---|
+| `docs/BUG-multi-select-menu-closes.md` | 🐞 باج في **`ecommoda-html-builder`** نفسها (`templates/24_data-table-section.html`) — القائمة المنسدلة بتتقفل بعد أول اختيار. اتصلّح محليًا هنا في الواجهة v2.2.0، ومستنّي ينزل على المهارة في جلسة منفصلة. |
+
 ## مسائل مفتوحة
 
-- **Build watch paths لسه `*` (الافتراضي)** — أي تعديل واجهة بينشر الـ Worker
-  تاني بنفس الكود. التضييق على `index.js` + `wrangler.toml`
-  (`ecommoda-tool-migration-playbook` §13-ب) اختياري ولسه ما اتعملش.
+— لا شيء.
 
-آخر تحديث: 01-09-2026 — 17:05
+آخر تحديث: 01-09-2026 — 18:20
 
 </div>

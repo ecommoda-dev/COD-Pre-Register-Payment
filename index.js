@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.3.0 — حذف endpoint الترحيل المؤقت)
+ * cod-pre-register-payment-worker  (v2.4.0 — إصلاح: حارس orderId كان بيبلع كل endpoints السجل)
  *
  * skills: ecommoda-worker-builder v2.0.0 · ecommoda-constants v1.4.3 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -27,7 +27,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.3.0';
+const WORKER_VERSION = '2.4.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -662,10 +662,18 @@ export default {
       // أي endpoint ترحيل مؤقت منشور بعد ما يخلص غرضه = سطح هجوم بلا مقابل.
       // لو احتجت ترحيل تاني يومًا، ارجع لنسخته في الـ git history (commit b3f7906).
 
-      if (!numericId) return json({ error: 'orderId is required' }, 400, request);
+      // 🔴 كان هنا حارس عام: `if (!numericId) return 400 orderId is required`
+      // — وهو **قبل** §LOG-ENDPOINTS. `get_logs`/`get_logs_count`/
+      // `get_logs_export` كلهم GET، يعني `bodyData = {}` و `numericId = null`،
+      // فالتلاتة كانوا بيرجعوا 400 ومحصلش إن الطلب وصلهم أصلاً. السجل كان
+      // مكسور من v2.0.0 (النسخة اللي كانت منشورة من الداشبورد) — ظهر بس لما
+      // الواجهة بقت بتعرض الخطأ بدل ما تبلعه في توست.
+      // الدرس: الحارس يبقى **جوه الـ endpoint اللي محتاجه**، مش سطر عام في
+      // نص الـ handler — العام بيبلع كل اللي بعده في صمت.
 
       // ── preview ───────────────────────────────────────────────────
       if (action === 'preview') {
+        if (!numericId) return json({ error: 'orderId is required' }, 400, request);
         assertEnv(env, 'shopify');
         const orderData = await getOrderDataById(env, numericId);
         if (!orderData) return json({ success: false, notFound: true }, 200, request);
@@ -693,6 +701,7 @@ export default {
 
       // ── preRegister ───────────────────────────────────────────────
       if (action === 'preRegister') {
+        if (!numericId) return json({ error: 'orderId is required' }, 400, request);
         assertEnv(env, 'shopify');
         const { amount, orderName, subtotal, shippingAmount, courier, lineItems, employee } = bodyData;
         if (!amount) return json({ error: 'amount is required' }, 400, request);
