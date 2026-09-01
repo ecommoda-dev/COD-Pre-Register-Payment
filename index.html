@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<!-- skills: ecommoda-html-builder v5.0.0 · ecommoda-constants v1.4.3 · ecommoda-worker-builder v2.0.0 — 01-09-2026 -->
+<!-- skills: ecommoda-html-builder v6.0.0 · ecommoda-constants v1.4.3 · ecommoda-worker-builder v2.0.0 — 01-09-2026 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pre-Register Payment — COD</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -266,7 +266,7 @@
   .tab-panel        { display: none; }
   .tab-panel.active { display: block; }
 
-  /* Freeze on Scroll — عتبتان + rAF throttle (منع باج الفليكر 30-08-2026) */
+  /* Freeze on Scroll — hysteresis مقيسة + rAF throttle (منع باج الفليكر — § 1b) */
   .sticky-header-wrap { position: sticky; top: 0; z-index: 300; background: var(--bg); padding-top: 2px; margin: 0 -2px; }
   .sticky-header-wrap.stuck { box-shadow: 0 6px 18px rgba(0,0,0,.10); }
   .sticky-header-wrap.stuck .app-header        { padding: 6px 14px; margin-bottom: 6px; }
@@ -1084,7 +1084,7 @@
           <ul>
             <li><code>§AUTH-JS</code> — Universal D1 Auth (login بالـ PIN، 4 حالات)</li>
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
-            <li><code>§TABS-JS</code> — <code>switchMainTab</code> (lazy load للسجل) · <code>onPageScroll</code> بعتبتين + rAF · chip التاب الحالي</li>
+            <li><code>§TABS-JS</code> — <code>switchMainTab</code> (lazy load للسجل) · <code>onPageScroll</code> بعتبتين (الباند مقيس بـ <code>measureSticky()</code>) + rAF · chip التاب الحالي</li>
             <li><code>§LOG-JS</code> — جدول السجل بالمعيار الموحّد: <code>msState</code> (فلتر الموظف) · <code>logParams()</code> (مصدر واحد للفلاتر) · <code>fetchLog()</code> (صفحة + عدّ بالتوازي) · <code>toggleSort</code> · <code>exportLogXLSX</code></li>
             <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
             <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
@@ -1132,7 +1132,18 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.3.1</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.3.2</span>
+          <span class="cl-ver-date">01-09-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span><b>رفرفة الهيدر عند نقطة القفل</b> — قفل الهيدر بيقلّل ارتفاعه فوق منطقة العرض، والمتصفح بيطرح الفرق ده من <code>scrollY</code> نفسه، فالعتبتين الثابتتين (40/12) كان الباند بتاعهم أضيق من الارتداد والهيدر يفضل يقفل ويفتح. الباند بقى <b>مقيسًا</b> من الارتفاع الفعلي (<code>measureSticky()</code>). القياس على Chromium: <b>٨ تبديلات → ١</b> في نفس السكرول</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>إعادة قياس الباند عند تغيّر <b>عرض</b> الشاشة بس (بـ debounce) — الربط بالـ <code>resize</code> الخام كان بيعمل رفرفة بنفسه على الموبايل</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.3.1</span>
           <span class="cl-ver-date">01-09-2026</span>
         </div>
         <ul class="cl-items">
@@ -1245,7 +1256,7 @@
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.3.1';
+  const TOOL_VERSION = '2.3.2';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
   const MIN_WORKER_VERSION = '2.4.0';   // النسخة اللي فيها endpoints السجل شغّالة فعلاً
@@ -1695,13 +1706,34 @@
     closeTabChipMenu();
   }
 
-  // ── Sticky/compact — عتبتان (Hysteresis) + rAF throttle ──────────
-  // ⚠️ ممنوع الرجوع لعتبة واحدة (toggle('stuck', y > N)) حتى بأرقام مختلفة —
-  // المشكلة في غياب الـ hysteresis والـ throttle مش في قيمة الرقم. العتبة
-  // الواحدة بتعمل فليكر عالق عند نقطة القفل (باج حقيقي، 30-08-2026).
+  // ── Sticky/compact — Hysteresis **مقيسة** + rAF throttle (§ 1b) ───
+  // ⚠️ ممنوع الرجوع لعتبة واحدة (toggle('stuck', y > N))، وممنوع كمان عتبتين
+  // برقمين ثابتين. قفل الهيدر بيقلّل ارتفاعه فوق منطقة العرض، والمتصفح
+  // (scroll anchoring) بيطرح الفرق ده من scrollY نفسه — يعني الفعل بيحرّك
+  // شرطه. فالباند لازم يكون **أوسع من فرق الارتفاع**، والفرق بيختلف من أداة
+  // لأداة، فبيتقاس مش بيتكتب. (باج متحقَّق بالقياس، 01-09-2026.)
   const stickyWrap = $('stickyWrap');
-  const STICK_ON = 40, STICK_OFF = 12;
-  let stickyRafPending = false;
+  const STICK_OFF  = 12;      // تحت الرقم ده يترجع مفتوح
+  let   STICK_ON   = 140;     // قيمة مبدئية آمنة — بتتحسب من الارتفاع الفعلي
+  let stickyDelta = 0, stickyW = 0, stickyRafPending = false;
+
+  // بيقيس كام بكسل ارتفاع الهيدر بيقلّ لما يتقفل. التبديل جوّه الدالة بيحصل
+  // والترانزيشن مطفي وفي نفس الفريم — مفيش paint بين القراءتين.
+  function measureSticky() {
+    const wasStuck = stickyWrap.classList.contains('stuck');
+    const nodes = [stickyWrap, ...stickyWrap.querySelectorAll('*')];
+    const prev  = nodes.map(n => n.style.transition);
+    nodes.forEach(n => n.style.transition = 'none');
+    stickyWrap.classList.remove('stuck');  const open = stickyWrap.offsetHeight;
+    stickyWrap.classList.add('stuck');     const shut = stickyWrap.offsetHeight;
+    stickyWrap.classList.toggle('stuck', wasStuck);
+    stickyWrap.offsetHeight;                                 // reflow قبل رجوع الترانزيشن
+    nodes.forEach((n, i) => n.style.transition = prev[i]);
+    stickyDelta = Math.max(0, open - shut);
+    STICK_ON = Math.max(40, stickyDelta + STICK_OFF + 24);   // ← الباند أوسع من الارتداد
+    stickyW = window.innerWidth;
+  }
+
   function onPageScroll() {
     if (stickyRafPending) return;
     stickyRafPending = true;
@@ -1714,6 +1746,16 @@
     });
   }
   window.addEventListener('scroll', onPageScroll, { passive: true });
+
+  // ⚠️ إعادة القياس على تغيّر **العرض** بس. ارتفاع الشاشة بيتغيّر عشرات المرات
+  // على الموبايل (شريط عنوان المتصفح)، والقياس بيلمس الكلاس — فالربط بالـ
+  // resize الخام بيعمل رفرفة بنفسه.
+  let stickyResizeTimer;
+  window.addEventListener('resize', () => {
+    if (window.innerWidth === stickyW) return;
+    clearTimeout(stickyResizeTimer);
+    stickyResizeTimer = setTimeout(measureSticky, 150);
+  });
 
   // ── Chip التاب الحالي ───────────────────────────────────────────
   function updateTabChip() {
@@ -2522,6 +2564,7 @@
   updateSortHeaderUI();
   buildTabChipMenu();
   updateTabChip();
+  measureSticky();   // ← بعد رسم التابات والـ chip — قبلها الارتفاع لسه مش نهائي
   checkWorkerVersion();
 </script>
 </body>

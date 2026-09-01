@@ -2,7 +2,7 @@
 
 # COD Pre-Register Payment
 
-![version](https://img.shields.io/badge/version-v1.2.0-blue)
+![version](https://img.shields.io/badge/version-v1.3.0-blue)
 
 أداة داخلية لـ EcomModa — تسجيل الدفع المسبق لأوردرات COD على شوبيفاي قبل
 التحصيل الفعلي من المندوب.
@@ -11,7 +11,7 @@
 |---|---|
 | الواجهة | https://ecommoda-dev.github.io/COD-Pre-Register-Payment/ |
 | الـ Worker | https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev |
-| الإصدار | Worker `v2.2.0` · الواجهة `v2.2.0` |
+| الإصدار | Worker `v2.4.0` · الواجهة `v2.3.2` |
 
 ## بنية الريبو
 
@@ -40,6 +40,6 @@ CLAUDE.md      ← قواعد الأداة وفخاخها وخط الأساس
 
 التفاصيل الكاملة → سكيل `ecommoda-tool-migration-playbook`.
 
-آخر تحديث: 01-09-2026 — 16:10
+آخر تحديث: 01-09-2026 — 21:10
 
 </div>
