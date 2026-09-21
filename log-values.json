@@ -1,0 +1,24 @@
+{
+  "tool": "cod_preregister",
+  "since": null,
+  "types": {
+    "login": {
+      "result": null,
+      "stage": null,
+      "desc": "دخول موظف"
+    },
+    "logout": {
+      "result": null,
+      "stage": null,
+      "desc": "خروج موظف"
+    },
+    "preregister": {
+      "result": [
+        "success",
+        "warning"
+      ],
+      "stage": null,
+      "desc": "تسجيل مسبق لتحصيل COD قبل التسليم"
+    }
+  }
+}
