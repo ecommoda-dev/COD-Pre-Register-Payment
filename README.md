@@ -19,7 +19,7 @@
 index.js       ← كود الـ Worker (منشور تلقائيًا عبر Cloudflare Workers Builds)
 wrangler.toml  ← الاسم + الـ bindings + الـ vars
 index.html     ← الواجهة (منشورة عبر GitHub Pages)
-Index.html     ← صفحة تحويل للرابط القديم — مفيش منطق فيها
+(اتشالت Index.html — 23-09-2026، قرار أحمد. الرابط الوحيد: https://ecommoda-dev.github.io/COD-Pre-Register-Payment/)
 CLAUDE.md      ← قواعد الأداة وفخاخها وخط الأساس
 ```
 
