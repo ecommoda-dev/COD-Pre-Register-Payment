@@ -184,12 +184,12 @@ git show b3f7906:index.js
 
 | المهارة | الإصدار وقت آخر تعديل |
 |---|---|
-| ecommoda-worker-builder | v2.0.0 |
+| ecommoda-worker-builder | v3.7.1 |
 | ecommoda-html-builder | v6.0.0 |
-| ecommoda-constants | v1.4.3 |
+| ecommoda-constants | v3.1.0 |
 | shopify-graphql-helper | v1.0.0 |
 
-آخر مطابقة: 01-09-2026 · `index.js` v2.4.0 · `index.html` v2.3.2
+آخر مطابقة: 24-09-2026 · `index.js` v2.4.1 · `index.html` v2.3.2
 
 🔴 معلّقة: — لا شيء
 
