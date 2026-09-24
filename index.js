@@ -1,7 +1,7 @@
 /**
- * cod-pre-register-payment-worker  (v2.4.0 — إصلاح: حارس orderId كان بيبلع كل endpoints السجل)
+ * cod-pre-register-payment-worker  (v2.4.1 — الطبقة ٥: الحارس الديناميكي لقيم اللوج)
  *
- * skills: ecommoda-worker-builder v2.0.0 · ecommoda-constants v1.4.3 ·
+ * skills: ecommoda-worker-builder v3.7.1 · ecommoda-constants v3.1.0 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
  *
  * Env bindings required:
@@ -27,7 +27,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.4.0';
+const WORKER_VERSION = '2.4.1';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -99,7 +99,65 @@ async function registerPin(db, username, pin) {
   return true;
 }
 
+// ══════════════════════════════════════════════════════
+// §LOG-REG — الحارس الديناميكي لقيم اللوج (الطبقة ٥، ecommoda-worker-builder Step 7-ج)
+// ══════════════════════════════════════════════════════
+// قطعة الأداة دي بس من log-values.json اللي جنبها — بتتحدّث معاه في نفس الـ
+// commit. الأداة دي بتكتب (tool, type) واحد بس (cod_preregister) — مفيش
+// كاتب تاني ومفيش writeLogsBatch.
+const LOG_REGISTRY = {
+  cod_preregister: new Set(['login', 'logout', 'preregister']),
+};
+
+const isRegisteredLogValue = (tool, type) => !!LOG_REGISTRY[tool]?.has(type);
+
+// UPSERT على (source_tool, tool, type) — صف واحد لكل قيمة، hits بيعدّ.
+// الحدث الكامل مش بيضيع: الصف الأصلي موجود في logs وعليه _unregistered،
+// والجدول ده فهرس مش سجل تاني — عشان كده dedupe مش صف لكل حدث.
+const LOG_ALERT_SQL = `
+  INSERT INTO log_value_alerts
+    (source_tool, tool, type, first_seen, last_seen, hits,
+     worker_version, sample_order_name, sample_employee, sample_notes)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT(source_tool, tool, type) DO UPDATE SET
+    last_seen         = excluded.last_seen,
+    hits              = log_value_alerts.hits + excluded.hits,
+    worker_version    = excluded.worker_version,
+    sample_order_name = excluded.sample_order_name,
+    sample_employee   = excluded.sample_employee,
+    sample_notes      = excluded.sample_notes,
+    status            = CASE WHEN log_value_alerts.status = 'ignored'
+                             THEN 'ignored' ELSE 'open' END
+`;
+
+// فشل التنبيه ممنوع يأثر على أي حاجة — try/catch صامت.
+async function noteUnregisteredLogValues(db, entries) {
+  const byPair = new Map();
+  for (const e of entries) {
+    const key = `${e.tool}\u0000${e.type}`;
+    const acc = byPair.get(key);
+    if (acc) { acc.hits++; continue; }
+    byPair.set(key, { entry: e, hits: 1 });
+  }
+  const now = new Date().toISOString();
+  for (const { entry, hits } of byPair.values()) {
+    try {
+      await db.prepare(LOG_ALERT_SQL).bind(
+        TOOL_NAME, entry.tool ?? '(بدون tool)', entry.type ?? '(بدون type)',
+        now, now, hits, WORKER_VERSION ?? null,
+        entry.orderName ?? null, entry.employee ?? null,
+        entry.notes ? String(entry.notes).slice(0, 200) : null,
+      ).run();
+    } catch (e) { /* متعمّد: التنبيه فهرس، وفشله أهون من تعطيل الأداة */ }
+  }
+}
+
 async function writeLog(db, entry) {
+  const unregistered = !isRegisteredLogValue(entry.tool, entry.type);
+  const extra = unregistered
+    ? { ...(entry.extra || {}), _unregistered: true }
+    : entry.extra;
+
   await db.prepare(`
     INSERT INTO logs
       (timestamp, tool, type, employee, order_id, order_name,
@@ -118,8 +176,10 @@ async function writeLog(db, entry) {
     entry.valueBefore  ?? null,
     entry.valueAfter   ?? null,
     entry.notes        ?? null,
-    entry.extra ? JSON.stringify(entry.extra) : null
+    extra ? JSON.stringify(extra) : null
   ).run();
+
+  if (unregistered) await noteUnregisteredLogValues(db, [entry]);   // بعد الكتابة، مش قبلها
 }
 
 const LOG_EXPORT_MAX = 2000;   // سقف التصدير — بيرجع للواجهة كـ `cap`

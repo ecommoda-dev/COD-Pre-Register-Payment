@@ -32,7 +32,10 @@ const opt  = (k, d) => { const i = args.indexOf(k); return i > -1 ? args[i + 1] 
 const ROOT     = opt('--dir', '.');
 const REGPATH  = opt('--registry', join(ROOT, 'log-values.json'));
 const AS_JSON  = args.includes('--json');
-const SKIP_DIR = new Set(['node_modules', '.git', '.wrangler', 'dist', 'build', 'coverage']);
+// 🔴 `tests` مستبعدة بقصد: فيها قيم tool/type مزيّفة (سابقة: `tool: 't'` في
+//    worker-logs.test.cjs). فيكستشر اختبار بيتحسب استخدام حقيقي = قيمة وهمية
+//    بتغطّي على قيمة ناقصة فعلاً.
+const SKIP_DIR = new Set(['node_modules', '.git', '.wrangler', 'dist', 'build', 'coverage', 'tests', 'test', '__tests__']);
 const EXTS     = new Set(['.js', '.mjs', '.cjs']);
 
 const isScannable = (p) =>
@@ -164,6 +167,14 @@ function maskLiterals(src) {
 // ── الاستخراج ──────────────────────────────────────────────────────────────
 const NB       = "(?<![A-Za-z0-9_$])";                       // يمنع contentType / otype
 const RE_TYPEK = new RegExp(`${NB}type\\s*:`, 'g');
+// 🔴 الأشكال الشرعية التانية لمفتاح `type` جوّه أوبجكت — لازم كلها تتشاف،
+//    لأن اللي مايتشافش بيعدّي في صمت (سابقة: index.js:4326 · `type,` shorthand).
+const RE_TYPE_SHORT = /(?<=(?<!\$)[{,]\s*)type\s*(?=[,}])/g;    // { tool, type, employee }
+// ⚠️ الـ(?<!\$) مهم: `${type}` جوّه template literal شكله زي الـshorthand بالظبط
+//    (محاط بـ{ و})، وبيدّي false positive. سابقة: Order-Printer index.js:2101.
+const RE_TYPE_COMP  = /\[\s*(['"])type\1\s*\]\s*:/g;           // { ['type']: x }
+const RE_SPREAD     = /\.\.\.\s*([A-Za-z_$][A-Za-z0-9_$]*)/g;  // { ...base, … }
+const RE_LOCAL_TYPE = /(?:const|let|var)\s+type\s*=/g;         // const type = <expr>;
 const RE_TOOL  = new RegExp(`${NB}tool\\s*:\\s*(['"\`])([^'"\`]*)\\1`, 'g');
 const RE_ANCHOR = new RegExp(`${NB}([A-Za-z_$][A-Za-z0-9_$]*)\\s*\\(`, 'g');
 const RE_IDENT_ARG = /(?:^|[(,\s])([A-Za-z_$][A-Za-z0-9_$]*)\s*(?=[,)])/g;
@@ -173,6 +184,8 @@ const used = new Map();   // type -> Set(مواضع)
 const dynamic = new Map();
 const otherTools = new Set();
 const noAnchorFiles = [];
+const spreads = new Map();     // نداء فيه ...spread — ممكن يخبّي type
+const blindSpans = [];         // نداء أنكور مفيهوش ولا مفتاح type بأي شكل
 const add = (map, key, at) => (map.get(key) ?? map.set(key, new Set()).get(key)).add(at);
 
 // يقرا قيمة الحقل من بعد `type:` لحد الفاصلة/القفلة على نفس المستوى (بيعدّي على النصوص والأسطر)
@@ -188,7 +201,7 @@ function readValue(src, i) {
     if (c === '`') { i = skipTemplate(src, i); continue; }
     if (PAIR[c]) { depth++; i++; continue; }
     if (c === ')' || c === '}' || c === ']') { if (depth === 0) break; depth--; i++; continue; }
-    if (depth === 0 && c === ',') break;
+    if (depth === 0 && (c === ',' || c === ';')) break;   // `;` مهم للـ shorthand: const type = …;
     i++;
   }
   return src.slice(start, i).trim();
@@ -292,7 +305,10 @@ for (const file of files) {
   const rel = relative(ROOT, file) || file;
   const lineAt = (i) => src.slice(0, i).split('\n').length;
 
-  for (const m of src.matchAll(RE_TOOL)) if (m[2] !== TOOL) otherTools.add(m[2]);
+  // القيمة بتتقرا من src (المحتوى متمسوح في mask)، بس الموضع بيتأكد من mask —
+  // عشان `tool: '…'` جوّه تعليق أو نص مايتحسبش قيمة حقيقية.
+  for (const m of src.matchAll(RE_TOOL))
+    if (m[2] !== TOOL && mask.startsWith('tool', m.index)) otherTools.add(m[2]);
 
   // ١) كل نداء لأنكور: خُد مدى الأقواس بتاعه
   const spans = [];
@@ -320,21 +336,59 @@ for (const file of files) {
 
   if (!spans.length) { if (/\btype\s*:/.test(mask)) noAnchorFiles.push(rel); continue; }
 
-  // ٣) استخرج type: من جوّه المديات بس
+  // ٣) استخرج مفتاح type من جوّه المديات — بكل أشكاله الشرعية.
+  //    القاعدة: مايعدّيش مفتاح في صمت. يا يتحلّ لقيمة، يا يتسجّل كـ dynamic،
+  //    يا النداء كله يتعلّم إنه أعمى. الشكل اللي مش متوقَّع = تقرير، مش سكوت.
   const seen = new Set();
   for (const [s, e] of spans) {
     const chunk = mask.slice(s, e + 1);
-    for (const k of chunk.matchAll(RE_TYPEK)) {
-      const abs = s + k.index + k[0].length;
-      if (seen.has(abs)) continue;
+    let found = 0;
+
+    // بيقرا القيمة ويصنّفها — نقطة واحدة عشان التلات أشكال يتعاملوا بنفس المنطق
+    const take = (abs, raw) => {
+      if (seen.has(abs) || !raw) return;
       seen.add(abs);
-      const raw = readValue(src, abs);
-      if (!raw) continue;
-      const at  = `${rel}:${lineAt(abs)}`;
+      found++;
+      const at   = `${rel}:${lineAt(abs)}`;
       const vals = resolve(raw, CONSTS);
       if (vals) for (const v of vals) add(used, v, at);
       else add(dynamic, raw.replace(/\s+/g, ' ').slice(0, 120), at);
+    };
+
+    // (أ) الشكل الصريح: type: <expr>
+    for (const k of chunk.matchAll(RE_TYPEK)) {
+      const abs = s + k.index + k[0].length;
+      take(abs, readValue(src, abs));
     }
+
+    // (ب) مفتاح محسوب: ['type']: <expr>
+    for (const k of chunk.matchAll(RE_TYPE_COMP)) {
+      const abs = s + k.index + k[0].length;
+      take(abs, readValue(src, abs));
+    }
+
+    // (ج) shorthand: { …, type, … } — القيمة جاية من متغيّر محلي اسمه type.
+    //     بندوّر على تعريفه جوّه نفس المدى؛ لو ملقناهوش، القيمة مجهولة بس
+    //     **مرئية** — وده الفرق عن النهارده اللي كانت بتختفي خالص.
+    for (const k of chunk.matchAll(RE_TYPE_SHORT)) {
+      const abs = s + k.index;
+      if (seen.has(abs)) continue;
+      // بندوّر على آخر `const type = …` قبل موضع الاستخدام — جوّه النداء الأول،
+      // وبعدين في الكود اللي قبله (التعريف كتير بيبقى فوق النداء مش جوّاه).
+      let def = -1;
+      for (const d of mask.slice(0, abs).matchAll(RE_LOCAL_TYPE)) def = d.index + d[0].length;
+      take(abs, def < 0 ? '«type» shorthand — مالقيتش تعريف للمتغيّر' : readValue(src, def));
+    }
+
+    // (د) spread — ممكن يجيب type من أوبجكت تاني. مش بنحاول نحلّه، بس بنقوله.
+    for (const sp of chunk.matchAll(RE_SPREAD))
+      add(spreads, sp[1], `${rel}:${lineAt(s + sp.index)}`);
+
+    // (هـ) مدى شكله صف لوج (فيه مفتاح tool) بس مفيهوش type بأي شكل =
+    //      الاستخراج فشل، مش الكود. بنشرط وجود `tool` عشان منعدّش نداءات
+    //      مش بتبني صف أصلاً (زي writeLogsBatch(db, rows) اللي الصف جوّه المتغيّر).
+    if (!found && new RegExp(`${NB}tool\\s*[:,}]`).test(chunk))
+      blindSpans.push(`${rel}:${lineAt(s)}`);
   }
 }
 
@@ -356,7 +410,14 @@ for (const [type, meta] of Object.entries(reg.types || {})) {
   checkVocab(type, 'stage',  meta?.stage,  STAGES);
 }
 
-const fail = unregistered.length > 0 || badVocab.length > 0;
+// قيمة ديناميكية لازم تكون **معترَف بيها** في dynamicTypes — الاعتراف بيحوّلها
+// من «حاجة التحقق مش شايفها» لـ«حاجة اتراجعت واتقرر إنها بتتحل وقت التشغيل».
+// من غير الاعتراف ده، التحذير بيبقى ضوضاء بيتعوّد عليها الواحد ويعدّيها.
+const acknowledged = new Set(reg.dynamicTypes || []);
+const unackDynamic = [...dynamic.keys()].filter((expr) => !acknowledged.has(expr));
+
+const fail = unregistered.length > 0 || badVocab.length > 0
+          || unackDynamic.length > 0 || blindSpans.length > 0;
 
 // ── التقرير ────────────────────────────────────────────────────────────────
 if (AS_JSON) {
@@ -380,9 +441,25 @@ if (badVocab.length) {
   for (const b of badVocab) console.log(`   ${b}`);
   console.log('');
 }
-if (dynamic.size) {
-  console.log('⚠️  قيم مش نص ثابت — التحقق الساكن مش شايفها، راجعها بنفسك:');
-  for (const [expr, ats] of dynamic) console.log(`   ${[...ats].join(' · ')}  →  ${expr}`);
+if (unackDynamic.length) {
+  console.log('🔴 قيم ديناميكية مش معترَف بيها — راجع كل قيمة ممكنة تطلع منها،');
+  console.log('   سجّلها في types، وضيف التعبير في dynamicTypes:');
+  for (const expr of unackDynamic) console.log(`   ${[...dynamic.get(expr)].join(' · ')}  →  ${expr}`);
+  console.log('');
+}
+if (blindSpans.length) {
+  console.log('🔴 نداء كتابة لوج مفيهوش أي مفتاح type — الاستخراج فشل، مش الكود:');
+  console.log(`   ${blindSpans.join(' · ')}\n`);
+}
+const ackDynamic = [...dynamic.keys()].filter((e) => acknowledged.has(e));
+if (ackDynamic.length) {
+  console.log('⚠️  قيم ديناميكية معترَف بيها (الحارس وقت التشغيل هو اللي بيغطّيها):');
+  for (const expr of ackDynamic) console.log(`   ${[...dynamic.get(expr)].join(' · ')}  →  ${expr}`);
+  console.log('');
+}
+if (spreads.size) {
+  console.log('ℹ️  spread جوّه نداء كتابة — ممكن يجيب type من أوبجكت تاني، راجعه:');
+  for (const [name, ats] of spreads) console.log(`   ...${name}  ←  ${[...ats].join(' · ')}`);
   console.log('');
 }
 if (orphans.length) {
