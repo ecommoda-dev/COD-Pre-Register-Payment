@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.6.0 — pending_details: فلاتر رأس العمود + ترتيب server-side)
+ * cod-pre-register-payment-worker  (v2.7.0 — فلاتر رأس العمود في السجل: orders · amount · results · get_logs_facets)
  *
  * skills: ecommoda-worker-builder v3.7.1 · ecommoda-constants v3.1.0 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -18,7 +18,7 @@
  *   checkPending / clearPending / listPending — API لـ cod-payment-center-worker
  *   pending_details – (GET · قراءة بس) KV + D1 (تسجيل + تحصيل) + شوبيفاي الحية لكل الأوردرات المسجّلة مسبقًا
  *   check_employee / register_pin / verify_employee / log_logout / get_employees — Universal D1 Auth
- *   get_logs / get_logs_count / get_logs_export — tool=cod_preregister
+ *   get_logs / get_logs_count / get_logs_export / get_logs_facets — tool=cod_preregister
  *   diag / get_config — فحص ذاتي + نسخة الـ Worker (إلزاميان لأي Worker بيكتب)
  *
  * D1: tool = 'cod_preregister' | type = 'preregister' / 'login' / 'logout'
@@ -28,7 +28,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.6.0';
+const WORKER_VERSION = '2.7.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -186,17 +186,34 @@ async function writeLog(db, entry) {
 const LOG_EXPORT_MAX = 2000;   // سقف التصدير — بيرجع للواجهة كـ `cap`
 
 /**
- * بنّاء شرط الفلترة الموحّد للسجل — التلات دوال تحته بتستخدمه.
- * القوايم (employees/types) والقيمة المفردة (employee/type) الاتنين مقبولين،
- * فالترقية متوافقة رجوعيًا ١٠٠٪.
- * ⚠️ dateFrom/dateTo بيتقارنوا بـ substr(timestamp,1,10) — يعني **UTC**، والعرض
- * بتوقيت القاهرة (UTC+3). فرق التلات ساعات ممكن يحط عملية بعد ٩ مساءً بتوقيت
- * القاهرة في يوم UTC اللي بعده. مقبول لفلتر بالأيام — بس مكتوب.
+ * بنّاء شرط الفلترة الموحّد للسجل — التلات دوال تحته بيستخدموه.
+ * القوايم (employees/types/results) والقيمة المفردة (employee/type) الاتنين مقبولين.
+ * v2.7.0 (فلاتر رأس العمود): `orders` (أرقام — OR) · `amountFrom/To` · `results`.
+ * ⚠️ dateFrom/dateTo = **يوم بتوقيت القاهرة** (من أول اليوم لأول اللي بعده، حدود
+ * محسوبة بـ Intl مش إزاحة ثابتة) — نفس يوم العرض في الواجهة. كانت بتقارن substr
+ * الـ UTC وعملية بعد ٩/١٠ مساءً كانت بتقع في اليوم اللي بعده.
  */
+// نتيجة العملية من extra JSON: success | warning | none (صفوف قبل v2.1.0 مالهاش الحقل)
+const LOG_RESULT_SQL = `COALESCE(CASE WHEN json_valid(extra) THEN json_extract(extra, '$.result') END, 'none')`;
+const LOG_RESULT_VALUES = ['success', 'warning', 'none'];
+
+function cairoMidnightUTC(day) {   // 'YYYY-MM-DD' → ISO بتاع أول لحظة في اليوم ده بالقاهرة
+  const [y, m, d] = day.split('-').map(Number);
+  for (const off of [3, 2]) {      // التوقيت الصيفي (+3) أو الشتوي (+2)
+    const t = new Date(Date.UTC(y, m - 1, d) - off * 3600 * 1000);
+    const p = cairoParts(t);
+    if (`${p.year}-${p.month}-${p.day}` === day && p.hour === '00' && p.minute === '00') return t.toISOString();
+  }
+  return new Date(Date.UTC(y, m - 1, d) - 2 * 3600 * 1000).toISOString();
+}
+
 function buildLogFilterSQL(select, {
   tool      = null,
   employee  = null, employees = null,
   type      = null, types     = null,
+  results   = null,
+  orders    = null,
+  amountFrom = null, amountTo = null,
   search    = null,
   dateFrom  = null, dateTo    = null,
 } = {}) {
@@ -213,12 +230,24 @@ function buildLogFilterSQL(select, {
   if (typs.length) {
     sql += ` AND type IN (${typs.map(() => '?').join(',')})`; b.push(...typs);
   }
+  if (Array.isArray(results) && results.length) {
+    sql += ` AND ${LOG_RESULT_SQL} IN (${results.map(() => '?').join(',')})`; b.push(...results);
+  }
+  if (Array.isArray(orders) && orders.length) {   // أرقام بس — أي واحد منهم (OR)
+    sql += ` AND (${orders.map(() => 'order_name LIKE ?').join(' OR ')})`;
+    b.push(...orders.map(t => `%${t}%`));
+  }
+  if (Number.isFinite(amountFrom)) { sql += ' AND value_after >= ?'; b.push(amountFrom); }
+  if (Number.isFinite(amountTo))   { sql += ' AND value_after <= ?'; b.push(amountTo); }
   if (search) {
     sql += ' AND (order_name LIKE ? OR notes LIKE ?)';
     b.push(`%${search}%`, `%${search}%`);
   }
-  if (dateFrom) { sql += ' AND substr(timestamp, 1, 10) >= ?'; b.push(dateFrom); }
-  if (dateTo)   { sql += ' AND substr(timestamp, 1, 10) <= ?'; b.push(dateTo); }
+  if (dateFrom) { sql += ' AND timestamp >= ?'; b.push(cairoMidnightUTC(dateFrom)); }
+  if (dateTo) {
+    const [y, m, d] = dateTo.split('-').map(Number);
+    sql += ' AND timestamp < ?'; b.push(cairoMidnightUTC(new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)));
+  }
 
   return { sql, b };
 }
@@ -253,6 +282,25 @@ async function getLogsCount(db, filters = {}) {
 }
 
 /**
+ * عدّاد كل قيمة في قوايم فلاتر رأس العمود (الموظف · النتيجة) — كل facet بيتعدّ
+ * على الصفوف المطابقة لكل الفلاتر **التانية** (مش الفلتر نفسه)، فالرقم جنب القيمة
+ * بيقول «هتجيب كام لو اخترتها».
+ */
+async function getLogsFacets(db, filters = {}) {
+  const e = buildLogFilterSQL('SELECT employee AS v, COUNT(*) AS c', { ...filters, employee: null, employees: null });
+  const r = buildLogFilterSQL(`SELECT ${LOG_RESULT_SQL} AS v, COUNT(*) AS c`, { ...filters, results: null });
+  const [er, rr] = await Promise.all([
+    db.prepare(e.sql + ' AND employee IS NOT NULL GROUP BY employee').bind(...e.b).all(),
+    db.prepare(r.sql + ' GROUP BY v').bind(...r.b).all(),
+  ]);
+  const out = { employee: {}, result: {} };
+  LOG_RESULT_VALUES.forEach(v => { out.result[v] = 0; });
+  (er.results || []).forEach(x => { out.employee[x.v] = x.c; });
+  (rr.results || []).forEach(x => { out.result[x.v] = x.c; });
+  return out;
+}
+
+/**
  * ⚠️ بتقص عند LOG_EXPORT_MAX في السكوت — الـ endpoint لازم يرجّع
  * cap/total/truncated معاها، وإلا الواجهة بتقول "تم التصدير ✓" على ملف ناقص.
  */
@@ -277,6 +325,12 @@ function logParamsFrom(url, tool) {
     employees: employees.length ? employees : null,
     employee:  url.searchParams.get('employee') || null,
     types:     types.length ? types : null,
+    results:   csv('results').filter(v => LOG_RESULT_VALUES.includes(v)).length
+                 ? csv('results').filter(v => LOG_RESULT_VALUES.includes(v)) : null,
+    orders:    csv('orders').map(t => t.replace(/\D/g, '')).filter(Boolean).length
+                 ? csv('orders').map(t => t.replace(/\D/g, '')).filter(Boolean) : null,
+    amountFrom: url.searchParams.get('amountFrom') ? Number(url.searchParams.get('amountFrom')) : null,
+    amountTo:   url.searchParams.get('amountTo')   ? Number(url.searchParams.get('amountTo'))   : null,
     // ملحوظة: sortKey/sortDir مش فلاتر — بيتقروا في get_logs لوحدها
     type:      url.searchParams.get('type')     || null,
     search:    url.searchParams.get('search')   || null,
@@ -1163,6 +1217,11 @@ export default {
           sortDir: url.searchParams.get('sortDir') || 'desc',
         });
         return json({ ok: true, entries }, 200, request);
+      }
+
+      if (action === 'get_logs_facets') {
+        const facets = await getLogsFacets(env.DB, logParamsFrom(url, TOOL_NAME));
+        return json({ ok: true, facets }, 200, request);
       }
 
       if (action === 'get_logs_count') {
