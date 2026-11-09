@@ -500,7 +500,7 @@
 .tbx .data-table thead th,.tbx .data-table tbody td{border-inline-start:1px solid var(--border)}
 .tbx .data-table thead th:first-child,.tbx .data-table tbody td:first-child{border-inline-start:none}
 .tbx .data-table tbody tr:hover{background:var(--surface-2)}
-.tbx .col-num{font-family:var(--font-mono);direction:ltr;white-space:nowrap}
+.tbx .col-num,.tbx .data-table tbody td.col-num{font-family:var(--font-mono);direction:ltr;white-space:nowrap}
 .tbx .th-in{display:inline-flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;max-width:100%}
 .tbx .th-label{cursor:pointer;user-select:none;padding:2px 4px;border-radius:5px;transition:background .12s,color .12s}
 .tbx .th-label:hover{background:var(--accent-light);color:var(--accent-dark)}
@@ -1025,7 +1025,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
           <colgroup id="pdCg"></colgroup>
           <thead id="pdHead"></thead>
           <tbody id="pdBody">
-            <tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>
+            <tr class="empty-row"><td colspan="15">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>
           </tbody>
         </table>
       </div>
@@ -1103,7 +1103,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
             <tr><td><code>preRegister</code></td><td>تسجيل الدفع + KV + ميتافيلد + D1</td></tr>
             <tr><td><code>checkPending / clearPending / listPending</code></td><td>API داخلي لـ cod-payment-center-worker</td></tr>
             <tr><td><code>get_logs / get_logs_count / get_logs_facets</code></td><td>سجل التسجيلات — فلترة (<code>employees</code> · <code>results</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> — يوم القاهرة) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلهم server-side</td></tr>
-            <tr><td><code>pending_details</code></td><td>تاب «المعلّقة والمحصّلة» — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية بنداء واحد. قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> · <code>timeFrom/To</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلها server-side</td></tr>
+            <tr><td><code>pending_details</code></td><td>تاب «المعلّقة والمحصّلة» — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية (S1/S2 كمان). قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> · <code>timeFrom/To</code> · <code>couriers</code> · <code>items</code> · <code>cAmountFrom/To</code> · <code>cDateFrom/To</code> · <code>cTimeFrom/To</code> · <code>custs</code> · <code>fins</code> · <code>s1</code> · <code>s2</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلها server-side</td></tr>
             <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
             <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
             <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
@@ -1128,7 +1128,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
             <li><code>§TABS-JS</code> — <code>switchMainTab</code> (lazy load للسجل) · <code>onPageScroll</code> بعتبتين (الباند مقيس بـ <code>measureSticky()</code>) + rAF · chip التاب الحالي</li>
             <li><code>§LOG-JS</code> — جدول السجل (الكائن <code>LG</code>) بنفس معيار تاب المعلّقة: فلاتر رأس العمود · <code>filterParams()</code> (مصدر واحد للفلاتر في <code>get_logs</code> و<code>get_logs_count</code> و<code>get_logs_facets</code> والتصدير) · <code>fetchNow()</code> · <code>toggleSort</code> · <code>exportLogXLSX</code></li>
-            <li><code>§PENDING-JS</code> — تاب «المعلّقة والمحصّلة» (الكائن <code>PD</code>): <code>params()</code> (مصدر واحد للفلاتر) · <code>fetchNow()</code> (آخر طلب بس هو اللي بيتعرض) · قوايم رأس العمود <code>openPop()</code>/<code>buildPop()</code> · <code>toggleSort()</code> · محرّك عرض الأعمدة <code>effective()</code>/<code>applyW()</code> · lazy عند فتح التاب</li>
+            <li><code>§PENDING-JS</code> — تاب «المعلّقة والمحصّلة» (الكائن <code>PD</code>): ١٥ عمود كلهم بفلتر (<code>COLS</code> · <code>MS_KEYS</code>/<code>NUM_KEYS</code>/<code>Q_KEYS</code>/<code>DATE_KEYS</code>/<code>TIME_KEYS</code>) · <code>params()</code> (مصدر واحد للفلاتر) · <code>fetchNow()</code> (آخر طلب بس هو اللي بيتعرض) · قوايم رأس العمود <code>openPop()</code>/<code>buildPop()</code> · <code>toggleSort()</code> · محرّك عرض الأعمدة <code>effective()</code>/<code>applyW()</code> · <code>liveBlockedMsg()</code> لرسالة سقف الفلاتر الحية · lazy عند فتح التاب</li>
             <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
             <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
           </ul>
@@ -1153,6 +1153,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
             <li><b>الفلترة والعدّ والترتيب في السجل كلهم server-side</b> — السجل مقسّم صفحات، والفلترة في المتصفح كانت هتخلي «النتائج» تعدّ الصفحة مش القاعدة.</li>
             <li>فلتر <code>من/إلى تاريخ</code> بيتقارن بـ <code>timestamp</code> المخزّن (UTC) والعرض بتوقيت القاهرة (+3) — عملية بعد ٩ مساءً ممكن تقع في يوم UTC اللي بعده. مقبول لفلتر بالأيام.</li>
             <li>الأعمدة المشتقّة من <code>extra</code> (المندوب · الشحن · المنتجات) <b>مش قابلة للترتيب</b> — مش أعمدة في جدول D1، عشان كده مالهاش سهم ترتيب.</li>
+            <li><b>فلاتر شوبيفاي الحية (العميل · شوبيفاي الآن · S1 · S2):</b> محتاجة نداء شوبيفاي لكل الأوردرات المطابقة للفلاتر التانية، فالـ Worker بيحدّها بـ ٢٥٠ (<code>PD_LIVE_FILTER_CAP</code>) ويرجّع <code>liveBlocked</code> صريح لو اتجاوزت — مفيش فلترة صامتة على جزء من البيانات. المجموعة ٥٠ أوردر (<code>LIVE_CHUNK</code>) بالتسلسل، وكاش ٢ دقيقة في ذاكرة الـ isolate بس.</li>
+            <li><b>عمود التحصيل</b> = <code>value_after</code> من صف <code>cod_payment/payment</code> (مبلغ الأوردر ده) — مش إجمالي الجلسة، ومش بيعرض طرق الدفع.</li>
             <li><b>بيانات العميل عرض فقط.</b> بتيجي من <code>preview</code> (محتاجة صلاحية <code>read_customers</code>) وبتتعرض في الكارت ونافذة التأكيد — <b>وممنوع</b> تدخل <code>writeLog</code> أو التصدير.</li>
           </ul>
         </div>
@@ -1175,7 +1177,22 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.6.0</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.7.0</span>
+          <span class="cl-ver-date">09-11-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>تاب <b>المعلّقة والمحصّلة</b>: <b>كل عمود بقى له فلتر</b> — المندوب · المنتجات (قايمة SKU بعدّاد) · تاريخ ووقت التحصيل · مبلغ التحصيل (نطاق) · العميل (اسم أو تليفون بتوكنز Enter) · شوبيفاي الآن · S1 · S2، فوق اللي كان موجود. المندوب والمنتجات بيتفلتروا من السيرفر قبل تقسيم الصفحات والعدّاد صح</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>عمودين جداد <b>S1</b> (<code>custom.manual_status</code>) و<b>S2</b> (<code>custom.status_2_r_e</code>) من ميتافيلدز الأوردر على شوبيفاي — لكل واحد فلتر بقيم دورة حياة الأوردر</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>عمود <b>التحصيل</b> بقى بيعرض <b>مبلغ الأوردر ده بس</b> — اتشالت تفاصيل الجلسة كلها (كاش · إنستاباي · محفظة) اللي كانت بتظهر إجمالي جلسة التحصيل مش الأوردر</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span><b>التاريخ والوقت عمودين منفصلين</b> للتسجيل وللتحصيل (بدل عمود مدمج بيلف على سطرين) — كل واحد بفلتره (التاريخ بأقسام · الوقت بمنزلق وقايمة ساعة/دقيقة) وترتيبه، والخلايا nowrap فعلًا</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>فلاتر العميل / شوبيفاي الآن / S1 / S2 بتحتاج شوبيفاي الحية، فبتشتغل لما الأوردرات المطابقة للفلاتر التانية ≤ ٢٥٠ — لو أكتر بتظهر رسالة صريحة بالعدد بدل رقم غلط. وعدّادات القوايم العادية بتبان «—» وقتها</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>ترتيب جديد على المندوب وعلى مبلغ التحصيل، وتاريخ/وقت التحصيل</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.6.0</span>
           <span class="cl-ver-date">09-11-2026</span>
         </div>
         <ul class="cl-items">
@@ -1338,10 +1355,10 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.6.0';
+  const TOOL_VERSION = '2.7.0';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
-  const MIN_WORKER_VERSION = '2.7.0';   // النسخة اللي فيها get_logs_facets وفلاتر السجل (orders · amount · results)
+  const MIN_WORKER_VERSION = '2.8.0';   // النسخة اللي فيها فلاتر كل أعمدة تاب المعلّقة (couriers · items · cDate/cTime/cAmount · custs · fins · s1 · s2) + S1/S2 في live
 
   // الرابط مش سر — ثابت هنا بدل حقل إعدادات (html-builder Standards #28)
   const WORKER_URL = 'https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev';
@@ -2804,6 +2821,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   });
   document.addEventListener('input', e => {
     const t = e.target;
+    if (!(pop && pop.contains(t))) return;   // listener على document — التابين بيشاركوه، فكل واحد بيتجاهل حقول قايمة التاني
     if (t.dataset.q !== undefined) { st.q[t.dataset.q] = t.value; t.classList.toggle('has-value', !!t.value.trim()); changed(); }
     else if (t.dataset.d) { const d = st.date[t.dataset.dk]; d[t.dataset.d] = t.value; d.preset = ''; d.month = ''; changed(); markDatePop(); }
     else if (t.dataset.r) { st.num[t.dataset.rk][t.dataset.r] = t.value; changed(); }
@@ -2991,7 +3009,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   const Q = s => document.querySelector(s);
   const pad2 = n => String(n).padStart(2, '0');
   const PAGE = 100;
-  const LS_COLS = 'prereg_pending_col_widths_v1';
+  const LS_COLS = 'prereg_pending_col_widths_v2';
 
   const PD_STATUS = {
     pending:   { label: '🟡 معلّق للتحصيل',          cls: 'warn', hint: 'المفتاح لسه في KV' },
@@ -3003,30 +3021,53 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   const STATUS_ORDER = ['pending', 'collected', 'stale', 'cleared', 'kv_only'];
   const FIN_AR = { PAID: 'مدفوع', PENDING: 'معلّق', PARTIALLY_PAID: 'مدفوع جزئيًا', AUTHORIZED: 'مفوَّض',
                    REFUNDED: 'مسترد', PARTIALLY_REFUNDED: 'مسترد جزئيًا', VOIDED: 'ملغى', EXPIRED: 'منتهي' };
+  // قيم فلتر «شوبيفاي الآن» — الحالة المالية + «ملغي» (cancelledAt) + «مش موجود» (الـ node رجع فاضي)
+  const FIN_LBL = Object.assign({}, FIN_AR, { CANCELLED: 'ملغي', NOT_FOUND: 'مش موجود على شوبيفاي' });
+  const FIN_ORDER = ['PAID', 'PENDING', 'PARTIALLY_PAID', 'AUTHORIZED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'VOIDED', 'EXPIRED', 'CANCELLED', 'NOT_FOUND'];
+  // S1 = custom.manual_status · S2 = custom.status_2_r_e — القيم حرفيًا من ecommoda-order-lifecycle (الكيسينج مهم)
+  const NONE = '__none__';   // «بدون قيمة» في فلاتر المندوب / S1 / S2 (نفس قيمة PD_NONE في الـ Worker)
+  const S1_VALUES = ['New Order', 'Confirmed', 'WhatsApp-Confirmed', 'WhatsApp-CANCELLED', 'Confirmed + Edit', 'Pending Edit',
+                     'Ready', 'Shipped', 'In-Return', 'Delivered', 'Returned', 'Cancelled'];
+  const S2_VALUES = ['Confirmed + RETURN', 'Confirmed + EXCHANGE', 'Ready', 'Shipped', 'In-Return', 'Returned'];
+  const S_CLS = { 'Delivered': 'ok', 'Ready': 'info', 'Shipped': 'info', 'Confirmed': 'info', 'Confirmed + Edit': 'warn', 'Pending Edit': 'warn',
+                  'WhatsApp-Confirmed': 'warn', 'WhatsApp-CANCELLED': 'warn', 'In-Return': 'warn', 'Confirmed + RETURN': 'warn',
+                  'Confirmed + EXCHANGE': 'warn', 'Returned': 'bad', 'Cancelled': 'bad' };
 
-  const FL = { reg: 'التسجيل', emp: 'الموظف', orderNo: 'رقم الأوردر', amount: 'المبلغ', status: 'الحالة' };
-  const MS_KEYS = ['emp', 'status'], NUM_KEYS = ['amount'], Q_KEYS = ['orderNo'], DATE_KEYS = ['reg'], TIME_KEYS = ['reg'];
+  // كل عمود له فلتر. التاريخ والوقت عمودين منفصلين (للتسجيل وللتحصيل) — كل واحد بفلتره وترتيبه (datetime-format.md § 4b)
+  const FL = { regDate: 'تاريخ التسجيل', regTime: 'وقت التسجيل', emp: 'الموظف', orderNo: 'رقم الأوردر', amount: 'المبلغ', courier: 'المندوب',
+               items: 'المنتجات', status: 'الحالة', collDate: 'تاريخ التحصيل', collTime: 'وقت التحصيل', camount: 'التحصيل', cust: 'العميل',
+               fin: 'شوبيفاي الآن', s1: 'S1', s2: 'S2' };
+  const MS_KEYS = ['emp', 'status', 'courier', 'items', 'fin', 's1', 's2'], NUM_KEYS = ['amount', 'camount'], Q_KEYS = ['orderNo', 'cust'],
+        DATE_KEYS = ['regDate', 'collDate'], TIME_KEYS = ['regTime', 'collTime'];
   const SEARCH_MIN = 10;   // مربع البحث في قوايم القيم بيظهر من 10 قيم فأكتر
   // مفاتيح الترتيب = whitelist الـ Worker (PD_SORT) حرفيًا — مفتاح مش فيها بيرجع للافتراضي في صمت
-  const SORTMAP = { reg: 'registeredAt', emp: 'employee', orderNo: 'orderName', amount: 'amount', status: 'status', coll: 'collectedAt' };
+  // (المنتجات · العميل · شوبيفاي الآن · S1 · S2 قابلة للفلترة بس — مشتقّة من extra أو من شوبيفاي الحية)
+  const SORTMAP = { regDate: 'registeredAt', regTime: 'registeredAt', emp: 'employee', orderNo: 'orderName', amount: 'amount', courier: 'courier',
+                    status: 'status', collDate: 'collectedAt', collTime: 'collectedAt', camount: 'collAmount' };
   const PRESETS = { today:'اليوم', yesterday:'أمس', last3:'آخر 3 أيام', last7:'آخر 7 أيام', last14:'آخر 14 يوم', last21:'آخر 21 يوم',
     last30:'آخر 30 يوم', last60:'آخر 60 يوم', last90:'آخر 90 يوم', thisMonth:'الشهر الحالي', lastMonth:'الشهر السابق',
     thisYear:'العام الحالي', lastYear:'العام السابق' };
   const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
   // ── الحالة ─────────────────────────────────────────────────────
-  const st = { ms: { emp: new Set(), status: new Set() }, num: { amount: { from: '', to: '' } },
-               q: { orderNo: '' }, tok: { orderNo: [] },
-               date: { reg: { preset: '', from: '', to: '', month: '' } }, tm: { reg: { from: '', to: '' } },
-               sort: { key: null, dir: null } };
+  const st = { ms: {}, num: {}, q: {}, tok: {}, date: {}, tm: {}, sort: { key: null, dir: null } };
+  const blankDate = () => ({ preset: '', from: '', to: '', month: '' });
+  MS_KEYS.forEach(k => { st.ms[k] = new Set(); });
+  NUM_KEYS.forEach(k => { st.num[k] = { from: '', to: '' }; });
+  Q_KEYS.forEach(k => { st.q[k] = ''; st.tok[k] = []; });
+  DATE_KEYS.forEach(k => { st.date[k] = blankDate(); });
+  TIME_KEYS.forEach(k => { st.tm[k] = { from: '', to: '' }; });
   let data = null, pageNo = 1, loadedOnce = false, reqId = 0, fetchTimer = 0;
 
-  const typeOf = k => MS_KEYS.includes(k) ? 'ms' : NUM_KEYS.includes(k) ? 'num' : Q_KEYS.includes(k) ? 'q' : 'date';
+  const typeOf = k => MS_KEYS.includes(k) ? 'ms' : NUM_KEYS.includes(k) ? 'num' : Q_KEYS.includes(k) ? 'q' : TIME_KEYS.includes(k) ? 'time' : 'date';
   const latinDigits = s => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
   const orderParts = v => latinDigits(v).split(/\D+/).filter(Boolean);   // المسافة/الفاصلة = أوردر تاني (OR)
-  const qClean = k => latinDigits(st.q[k]).replace(/\D/g, '');
+  // رقم الأوردر = أرقام بس · العميل = نص حر (اسم أو تليفون)، كل Enter = توكن
+  const qClean = k => k === 'orderNo' ? latinDigits(st.q[k]).replace(/\D/g, '') : latinDigits(st.q[k]).trim();
+  const qParts = k => k === 'orderNo' ? orderParts(st.q[k]) : (qClean(k) ? [qClean(k)] : []);
+  const tokPre = k => k === 'orderNo' ? '#' : '';
   const qOn = k => st.tok[k].length > 0 || !!qClean(k);
-  const tmCount = k => (st.tm[k].from || st.tm[k].to) ? 1 : 0;
+  const tmCount = k => { const a = st.tm[k]; return (a && (a.from || a.to)) ? 1 : 0; };
   const fmtD = v => { if (!v) return '—'; const p = String(v).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : v; };
   const hm2m = s => { const [h, m] = String(s).split(':').map(Number); return h * 60 + m; };
   const m2hm = m => `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
@@ -3043,30 +3084,51 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       : `من 📅 ${fmtD(d.from)} إلى 📅 ${fmtD(d.to)}`;
   }
 
-  // ── عناصر قوايم القيم (الموظف · الحالة) + عدّاد كل قيمة من facets السيرفر ──
+  // ── عناصر قوايم القيم + عدّاد كل قيمة من facets السيرفر (null = «—» مش مظبوط يتحسب) ──
+  const fc = (m, v) => m ? (v in m ? m[v] : 0) : null;
+  const byLabel = (a, b) => a.l.localeCompare(b.l, 'ar');
   function itemsFor(k) {
-    const f = data && data.facets;
-    if (k === 'status') return STATUS_ORDER.map(v => ({ v, l: PD_STATUS[v].label, c: f ? (f.status[v] ?? 0) : null }));
-    return Object.keys(empNames).map(u => ({ v: u, l: empNames[u], c: f ? (f.employee[u] ?? 0) : null }))
-      .sort((a, b) => a.l.localeCompare(b.l, 'ar'));
+    const f = data && data.facets, lv = f && f.live;
+    let its;
+    if (k === 'status') return STATUS_ORDER.map(v => ({ v, l: PD_STATUS[v].label, c: fc(f && f.status, v) }));
+    if (k === 'emp') its = Object.keys(empNames).map(u => ({ v: u, l: empNames[u], c: fc(f && f.employee, u) })).sort(byLabel);
+    else if (k === 'courier') its = Object.keys((f && f.courier) || {}).map(v => ({ v, l: v === NONE ? '— بدون مندوب' : v, c: fc(f.courier, v) })).sort(byLabel);
+    else if (k === 'items') its = Object.keys((f && f.items) || {}).map(v => ({ v, l: v, c: fc(f.items, v) })).sort(byLabel);
+    else if (k === 'fin') return FIN_ORDER.map(v => ({ v, l: FIN_LBL[v], c: fc(lv && lv.fin, v) }));
+    else return (k === 's1' ? S1_VALUES : S2_VALUES).concat(NONE).map(v => ({ v, l: v === NONE ? '— بدون قيمة' : v, c: fc(lv && lv[k], v) }));
+    // قيمة مختارة اختفت من الـ facets (فلتر تاني استبعدها) تفضل ظاهرة عشان تتشال
+    const have = new Set(its.map(i => i.v));
+    [...st.ms[k]].filter(v => !have.has(v)).forEach(v => its.push({ v, l: v === NONE ? '— بدون مندوب' : v, c: 0 }));
+    return its;
   }
   const labelOf = (k, v) => (itemsFor(k).find(i => i.v === v) || { l: v }).l;
 
   // ── باراميترات الفلاتر للسيرفر (مصدر واحد) ───────────────────────
+  // القوايم الحرّة (مندوب · SKU · عميل · S1/S2) بتتفصل بـ '||' لأن القيمة نفسها ممكن تحتوي فاصلة.
   function params() {
     const p = {};
-    if (st.ms.status.size) p.statuses = [...st.ms.status].join(',');
-    if (st.ms.emp.size) p.employees = [...st.ms.emp].join(',');
-    const ords = [...st.tok.orderNo, ...orderParts(st.q.orderNo)];
+    const sel = (k, name, sep) => { if (st.ms[k].size) p[name] = [...st.ms[k]].join(sep); };
+    sel('status', 'statuses', ','); sel('emp', 'employees', ',');
+    sel('courier', 'couriers', '||'); sel('items', 'items', '||');
+    sel('fin', 'fins', '||'); sel('s1', 's1', '||'); sel('s2', 's2', '||');
+    const ords = [...st.tok.orderNo, ...qParts('orderNo')];
     if (ords.length) p.orders = ords.join(',');
-    const a = st.num.amount;
+    const cs = [...st.tok.cust, ...qParts('cust')];
+    if (cs.length) p.custs = cs.join('||');
+    const a = st.num.amount, ca = st.num.camount;
     if (a.from !== '') p.amountFrom = a.from;
     if (a.to !== '') p.amountTo = a.to;
-    const d = st.date.reg, t = st.tm.reg;
+    if (ca.from !== '') p.cAmountFrom = ca.from;
+    if (ca.to !== '') p.cAmountTo = ca.to;
+    const d = st.date.regDate, t = st.tm.regTime, cd = st.date.collDate, ct = st.tm.collTime;
     if (d.from) p.dateFrom = d.from;
     if (d.to) p.dateTo = d.to;
     if (t.from) p.timeFrom = t.from;
     if (t.to) p.timeTo = t.to;
+    if (cd.from) p.cDateFrom = cd.from;
+    if (cd.to) p.cDateTo = cd.to;
+    if (ct.from) p.cTimeFrom = ct.from;
+    if (ct.to) p.cTimeTo = ct.to;
     if (st.sort.key && SORTMAP[st.sort.key]) { p.sortKey = SORTMAP[st.sort.key]; p.sortDir = st.sort.dir; }
     return p;
   }
@@ -3083,16 +3145,18 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (ty === 'ms') return st.ms[k].size;
     if (ty === 'num') { const a = st.num[k]; return (a.from !== '' || a.to !== '') ? 1 : 0; }
     if (ty === 'q') return st.tok[k].length + (qClean(k) ? 1 : 0);
-    return ((st.date[k].from || st.date[k].to) ? 1 : 0) + tmCount(k);
+    if (ty === 'time') return tmCount(k);
+    return (st.date[k].from || st.date[k].to) ? 1 : 0;
   }
-  const resetDate = k => { st.date[k] = { preset: '', from: '', to: '', month: '' }; };
+  const resetDate = k => { st.date[k] = blankDate(); };
   const resetTm = k => { st.tm[k] = { from: '', to: '' }; };
-  function clearAll() {
+  function resetFilters() {
     MS_KEYS.forEach(k => st.ms[k].clear());
-    st.num.amount = { from: '', to: '' }; st.q.orderNo = ''; st.tok.orderNo = [];
+    NUM_KEYS.forEach(k => { st.num[k] = { from: '', to: '' }; });
+    Q_KEYS.forEach(k => { st.q[k] = ''; st.tok[k] = []; });
     DATE_KEYS.forEach(resetDate); TIME_KEYS.forEach(resetTm);
-    closePop(); changed();
   }
+  function clearAll() { resetFilters(); closePop(); changed(); }
   function setPreset(k, p) {
     const t = cairoDateStr(), Y = +t.slice(0, 4), M = +t.slice(5, 7), d = st.date[k];
     let r;
@@ -3113,17 +3177,24 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
 
   // ── الأعمدة ────────────────────────────────────────────────────
+  // keep = عمود nowrap (تاريخ/وقت/أرقام) ما بيتضغطش تحت عرض محتواه — لو المساحة ناقصة الجدول بيسكرول أفقيًا بدل ما المحتوى يطلع برّه خليته.
+  // 15 عمود، كلهم بفلتر. التاريخ والوقت (تسجيل/تحصيل) أعمدة منفصلة — كل واحد sortable مستقل من نفس الـ timestamp
   const COLS = [
-    { k: 'reg',     l: 'التسجيل',        flt: 'reg' },
-    { k: 'emp',     l: 'الموظف',         flt: 'emp' },
-    { k: 'orderNo', l: 'رقم الأوردر',    flt: 'orderNo' },
-    { k: 'amount',  l: 'المبلغ (EGP)',   flt: 'amount' },
-    { k: 'courier', l: 'المندوب',        nosort: true },
-    { k: 'items',   l: 'المنتجات',       nosort: true },
-    { k: 'status',  l: 'الحالة',         flt: 'status' },
-    { k: 'coll',    l: 'التحصيل' },
-    { k: 'cust',    l: 'العميل',         nosort: true },
-    { k: 'live',    l: 'شوبيفاي الآن',   nosort: true },
+    { k: 'regDate',  l: 'تاريخ التسجيل',  flt: 'regDate', keep: true },
+    { k: 'regTime',  l: 'وقت التسجيل',    flt: 'regTime', keep: true },
+    { k: 'emp',      l: 'الموظف',         flt: 'emp' },
+    { k: 'orderNo',  l: 'رقم الأوردر',    flt: 'orderNo', keep: true },
+    { k: 'amount',   l: 'المبلغ (EGP)',   flt: 'amount', keep: true },
+    { k: 'courier',  l: 'المندوب',        flt: 'courier' },
+    { k: 'items',    l: 'المنتجات',       flt: 'items' },
+    { k: 'status',   l: 'الحالة',         flt: 'status' },
+    { k: 'collDate', l: 'تاريخ التحصيل',  flt: 'collDate', keep: true },
+    { k: 'collTime', l: 'وقت التحصيل',    flt: 'collTime', keep: true },
+    { k: 'camount',  l: 'التحصيل (EGP)',  flt: 'camount', keep: true },
+    { k: 'cust',     l: 'العميل',         flt: 'cust' },
+    { k: 'fin',      l: 'شوبيفاي الآن',   flt: 'fin' },
+    { k: 's1',       l: 'S1',             flt: 's1' },
+    { k: 's2',       l: 'S2',             flt: 's2' },
   ];
   const FUNNEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg>';
   const ICO_CAL = '<svg class="dt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
@@ -3158,6 +3229,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       data = d;
       Q('#pdUpd').textContent = `آخر تحديث ${formatDateTime(new Date().toISOString())}`;
       render(); renderWarn(d);
+      if (pop && popKey && typeOf(popKey) === 'ms') renderList();   // عدّادات القايمة المفتوحة (من الـ facets الجديدة)
     } catch (err) {
       if (my !== reqId) return;
       Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}" style="color:var(--red)">فشل التحميل — ${esc(err.message)}</td></tr>`;
@@ -3172,9 +3244,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (d.truncated) w.push(`⚠️ الاستعلام وصل للسقف (${(d.cap || 2000).toLocaleString('en-US')} تسجيل) — الأقدم منه مش ظاهر. ضيّق الفترة.`);
     if (d.orphansTruncated) w.push('⚠️ مفاتيح KV بدون سجل كتيرة — اتعرض جزء منها بس.');
     if (d.kvComplete === false) w.push('⚠️ قائمة مفاتيح KV ناقصة (سقف القراءة) — حالات «معلّق» ممكن تكون غير مكتملة.');
-    if (d.shopify && d.shopify.ok === false)
+    if (d.shopify && d.shopify.ok === false && !d.liveBlocked)
       w.push(`⚠️ تعذّر جلب حالة شوبيفاي الحية وبيانات العميل — الباقي معروض من KV وD1. (${esc(d.shopify.error)})`);
-    if (st.tm.reg.from && st.tm.reg.to && st.tm.reg.from > st.tm.reg.to) w.push('⚠️ وقت «من» بعد وقت «إلى» في فلتر التسجيل — مفيش نتايج.');
+    TIME_KEYS.forEach(k => { const a = st.tm[k]; if (a.from && a.to && a.from > a.to) w.push(`⚠️ وقت «من» بعد وقت «إلى» في فلتر ${FL[k]} — مفيش نتايج.`); });
     const el = Q('#pdWarn');
     el.style.display = w.length ? '' : 'none';
     el.innerHTML = w.join('<br>');
@@ -3188,18 +3260,13 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     const itemsCell = items.length
       ? `<div class="items-chips">${items.map(li => `<span class="item-chip">${esc(li.sku)} × ${esc(li.quantity)}</span>`).join('')}</div>` : '—';
 
+    // التحصيل: مبلغ الأوردر ده بس (value_after من لوج أداة التحصيل) — من غير طرق الدفع/إجمالي الجلسة
     const c = r.collection;
-    let collCell = '—';
-    if (c) {
-      const pm = c.paymentMethods || {};
-      const methods = [['cash', 'كاش'], ['instapay', 'إنستاباي'], ['wallet', 'محفظة']]
-        .filter(([k]) => Number(pm[k]) > 0).map(([k, l]) => `${l} ${fmt(Number(pm[k]))}`).join(' · ');
-      collCell = `${formatDateTime(c.at)}<div class="sub">${esc(empNames[c.by] || c.by || '—')}${c.amount != null ? ' · ' + fmt(Number(c.amount)) : ''}</div>`
-        + (methods ? `<div class="sub">${esc(methods)}</div>` : '');
-    }
+    const collCell = c ? `${esc(empNames[c.by] || c.by || '—')} · ${c.amount != null ? fmt(Number(c.amount)) : '—'}` : '—';
 
     const lv = r.live;
-    let custCell = '—', liveCell = '—';
+    let custCell = '—', liveCell = '—', s1Cell = '—', s2Cell = '—';
+    const sBadge = v => v ? `<span class="res-badge ${S_CLS[v] || 'none'}" style="white-space:nowrap">${esc(v)}</span>` : '—';
     if (lv && lv.notFound) {
       liveCell = '<span class="res-badge bad" title="الأوردر مش موجود على شوبيفاي">مش موجود</span>';
     } else if (lv) {
@@ -3209,22 +3276,42 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       liveCell = (lv.cancelled ? '<span class="res-badge bad">ملغي</span> ' : '')
         + `<span class="res-badge ${lv.financialStatus === 'PAID' ? 'ok' : 'none'}">${esc(fin)}</span>`
         + (lv.outstanding != null && Number(lv.outstanding) !== 0 ? `<div class="sub">متبقي ${fmt(Number(lv.outstanding))}</div>` : '');
+      s1Cell = sBadge(lv.s1); s2Cell = sBadge(lv.s2);
     }
     return `<tr>
-      <td class="col-num">${r.registeredAt ? formatDateTime(r.registeredAt) : '—'}</td>
+      <td class="col-num">${formatDate(r.registeredAt)}</td>
+      <td class="col-num">${formatTimeOnly(r.registeredAt)}</td>
       <td>${esc(empNames[r.registeredBy] || r.registeredBy || '—')}</td>
       <td class="col-num">${orderLink(r.orderName, r.orderId)}${r.registrations > 1 ? `<div class="sub">اتسجّل ${r.registrations} مرات</div>` : ''}</td>
       <td class="col-num">${r.amount != null ? fmt(Number(r.amount)) : '—'}</td>
       <td>${r.courier ? esc(r.courier) : '—'}</td>
       <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
       <td><span class="res-badge ${stt.cls}" title="${esc(stt.hint)}">${stt.label}</span></td>
+      <td class="col-num">${formatDate(c ? c.at : null)}</td>
+      <td class="col-num">${formatTimeOnly(c ? c.at : null)}</td>
       <td class="col-num">${collCell}</td>
       <td>${custCell}</td>
       <td>${liveCell}</td>
+      <td>${s1Cell}</td>
+      <td>${s2Cell}</td>
     </tr>`;
+  }
+  // فلتر حي (العميل · شوبيفاي الآن · S1 · S2) محتاج شوبيفاي لكل الأوردرات المطابقة — الـ Worker بيرفض لو العدد كبير بدل ما يطلّع رقم غلط
+  function liveBlockedMsg(b) {
+    return b.reason === 'too_many'
+      ? `فلاتر العميل / شوبيفاي الآن / S1 / S2 بتحتاج جلب بيانات شوبيفاي الحية لكل الأوردرات المطابقة — العدد دلوقتي ${b.candidates.toLocaleString('en-US')} والحد ${b.cap.toLocaleString('en-US')}. ضيّق باقي الفلاتر الأول (التاريخ · الحالة · الموظف · المندوب…).`
+      : `تعذّر جلب بيانات شوبيفاي لتطبيق فلاتر العميل / شوبيفاي الآن / S1 / S2 — ${esc(b.error || '')}`;
   }
   function render() {
     const rows = data.rows || [], total = data.total || 0;
+    if (data.liveBlocked) {
+      Q('#pdCount').textContent = '—';
+      Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}" style="color:var(--amber);font-weight:700;line-height:1.9;padding:22px 16px">⚠️ ${liveBlockedMsg(data.liveBlocked)}</td></tr>`;
+      Q('#pdPager').style.display = 'none';
+      renderChips(); updateStates();
+      if (wReady) applyW(); else ensureW();
+      return;
+    }
     Q('#pdCount').textContent = total.toLocaleString('en-US');
     Q('#pdBody').innerHTML = rows.length ? rows.map(rowHtml).join('')
       : `<tr class="empty-row"><td colspan="${COLS.length}">${anyFilterActive() ? 'مفيش نتايج مطابقة للفلاتر' : 'لا توجد أوردرات مسجّلة مسبقًا'}</td></tr>`;
@@ -3245,16 +3332,12 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     MS_KEYS.forEach(k => { if (st.ms[k].size) rows.push(chipRow(FL[k], [...st.ms[k]].map(v => chip(labelOf(k, v), `ms:${k}:${v}`)))); });
     NUM_KEYS.forEach(k => { const a = st.num[k]; if (a.from !== '' || a.to !== '') rows.push(chipRow(FL[k], [chip(`من ${a.from || '—'} إلى ${a.to || '—'}`, `range:${k}:`)])); });
     Q_KEYS.forEach(k => {
-      const cs = st.tok[k].map((t, i) => chip('#' + t, `tok:${k}:${i}`));
+      const cs = st.tok[k].map((t, i) => chip(tokPre(k) + t, `tok:${k}:${i}`));
       if (qClean(k)) cs.push(chip(st.q[k].trim(), `q:${k}:`));
       if (cs.length) rows.push(chipRow(FL[k], cs));
     });
-    DATE_KEYS.forEach(k => {
-      const d = st.date[k], a = st.tm[k], cs = [];
-      if (d.from || d.to) cs.push(chip(dateLabel(d), `date:${k}:`));
-      if (a && (a.from || a.to)) cs.push(chip(tmRange(a), `time:${k}:`));
-      if (cs.length) rows.push(chipRow(FL[k], cs));
-    });
+    DATE_KEYS.forEach(k => { const d = st.date[k]; if (d.from || d.to) rows.push(chipRow(FL[k], [chip(dateLabel(d), `date:${k}:`)])); });
+    TIME_KEYS.forEach(k => { const a = st.tm[k]; if (a.from || a.to) rows.push(chipRow(FL[k], [chip(tmRange(a), `time:${k}:`)])); });
     z.innerHTML = rows.join('');
   }
   function updateStates() {
@@ -3330,10 +3413,15 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="clear">✕ مسح الاختيار</button></div>` +
         `<div class="pop-body"><div class="sec"><div class="sec-t">نطاق (من — إلى)</div><div class="rng"><div><label for="rf-${k}">من</label><input id="rf-${k}" type="number" class="inp" data-r="from" data-rk="${k}" value="${esc(a.from)}" data-autofocus></div><div><label for="rt-${k}">إلى</label><input id="rt-${k}" type="number" class="inp" data-r="to" data-rk="${k}" value="${esc(a.to)}"></div></div></div></div>`;
     } else if (ty === 'q') {
-      h = `<div class="pop-hd">${FL[k]}</div><div class="pop-body"><div class="search-wrap"><input id="q-${k}" class="inp ${qClean(k) ? 'has-value' : ''}" data-q="${k}" value="${esc(st.q[k])}" placeholder="اكتب رقم واضغط Enter" autocomplete="off" data-autofocus><span class="search-icon">🔍</span></div>` +
-        `<div class="tok-row">${st.tok[k].map((t, i) => `<span class="ms-chip">#${esc(t)}<button type="button" data-tokrm="${i}" aria-label="إزالة">✕</button></span>`).join('')}</div>` +
-        `<div class="hint">اكتب رقم أوردر (أو جزء منه) واضغط Enter لإضافته — أو الزق كذا رقم مع بعض. النتيجة أي واحد منهم.</div>` +
+      const isNo = k === 'orderNo';
+      h = `<div class="pop-hd">${FL[k]}</div><div class="pop-body"><div class="search-wrap"><input id="q-${k}" class="inp ${qClean(k) ? 'has-value' : ''}" data-q="${k}" value="${esc(st.q[k])}" ${isNo ? 'placeholder="اكتب رقم واضغط Enter"' : ''} autocomplete="off" data-autofocus><span class="search-icon">🔍</span></div>` +
+        `<div class="tok-row">${st.tok[k].map((t, i) => `<span class="ms-chip">${tokPre(k)}${esc(t)}<button type="button" data-tokrm="${i}" aria-label="إزالة">✕</button></span>`).join('')}</div>` +
+        `<div class="hint">${isNo ? 'اكتب رقم أوردر (أو جزء منه) واضغط Enter لإضافته — أو الزق كذا رقم مع بعض. النتيجة أي واحد منهم.'
+          : 'اكتب اسم العميل (أو جزء منه) أو رقم تليفونه واضغط Enter لإضافته — كل Enter كلمة بحث جديدة والنتيجة أي واحدة منهم. الفلتر ده بيجيب بيانات شوبيفاي الحية، فبيشتغل لما الأوردرات المطابقة للفلاتر التانية تبقى ٢٥٠ أو أقل.'}</div>` +
         `<button class="clear-btn" type="button" data-act="qclear">✕ مسح الاختيار</button></div>`;
+    } else if (ty === 'time') {
+      h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="tclear">✕ مسح الاختيار</button></div>` +
+        `<div class="pop-body">${timeBodyHtml(k)}</div>`;
     } else {
       const d = st.date[k], cy = curYear();
       const pb = p => `<button type="button" data-preset="${p}" class="${d.preset === p ? 'on' : ''}">${PRESETS[p]}</button>`;
@@ -3344,9 +3432,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
         `<div class="sec"><div class="pills c4">${['thisMonth','lastMonth','thisYear','lastYear'].map(pb).join('')}</div></div>` +
         `<div class="sec"><div class="yr-step"><button type="button" data-yr="-1" aria-label="السنة السابقة" ${popYear <= cy - 10 ? 'disabled' : ''}>›</button><button type="button" class="yr-lbl ${d.month === String(popYear) ? 'on' : ''}" data-yrsel aria-label="العام كله">${popYear}</button><button type="button" data-yr="1" aria-label="السنة التالية" ${popYear >= cy ? 'disabled' : ''}>‹</button></div><div class="pills c6">${MONTHS_AR.map(mb).join('')}</div></div>` +
         `<div class="sec"><div class="rng"><div><label for="df-${k}">من تاريخ</label>${dtInp(`id="df-${k}" data-d="from" data-dk="${k}" value="${d.from}"`)}</div><div><label for="dt-${k}">إلى تاريخ</label>${dtInp(`id="dt-${k}" data-d="to" data-dk="${k}" value="${d.to}"`)}</div></div></div>` +
-        timeBodyHtml(k) + `</div>`;
+        `</div>`;
     }
-    pop.innerHTML = h; pop.classList.toggle('wide', ty === 'date');
+    pop.innerHTML = h; pop.classList.toggle('wide', ty === 'date' || ty === 'time');
     place();
   }
   function timeBodyHtml(k) {
@@ -3421,7 +3509,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     const yl = pop.querySelector('[data-yrsel]'); if (yl) yl.classList.toggle('on', d.month === String(popYear));
   }
   function commitTok(k) {   // Enter = ضيف المكتوب كتوكن (chip) وفضّي الحقل
-    const parts = orderParts(st.q[k]); if (!parts.length) return false;
+    const parts = qParts(k); if (!parts.length) return false;
     parts.forEach(n => { if (!st.tok[k].includes(n)) st.tok[k].push(n); });
     st.q[k] = ''; buildPop(); changed();
     const f = pop && pop.querySelector('[data-autofocus]'); if (f) f.focus();
@@ -3453,7 +3541,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       renderList(); changed();
     }
     else if (act === 'qclear') { st.q[k] = ''; st.tok[k] = []; buildPop(); changed(); }
-    else if (act === 'dclear') { resetDate(k); resetTm(k); buildPop(); changed(); }
+    else if (act === 'dclear') { resetDate(k); buildPop(); changed(); }
+    else if (act === 'tclear') { resetTm(k); buildPop(); changed(); }
   }
 
   // ── tooltip قيم الفلتر المحددة — مفيش اختيار = مفيش tooltip ──────
@@ -3462,10 +3551,11 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     const ty = typeOf(k);
     if (ty === 'ms') return [...st.ms[k]].map(v => labelOf(k, v)).join('، ');
     if (ty === 'num') { const a = st.num[k]; return `من ${a.from || '—'} إلى ${a.to || '—'}`; }
-    if (ty === 'q') return [...st.tok[k].map(t => '#' + t), ...(qClean(k) ? [st.q[k].trim()] : [])].join(' أو ');
-    const d = st.date[k], tt = tmCount(k) ? tmRange(st.tm[k]) : ''; let dt = '';
+    if (ty === 'q') return [...st.tok[k].map(t => tokPre(k) + t), ...(qClean(k) ? [st.q[k].trim()] : [])].join(' أو ');
+    if (ty === 'time') return tmRange(st.tm[k]);
+    const d = st.date[k]; let dt = '';
     if (d.from || d.to) { const r = `من 📅 ${fmtD(d.from)} إلى 📅 ${fmtD(d.to)}`; dt = (d.preset || d.month) ? `${dateLabel(d)}: ${r}` : r; }
-    return [dt, tt].filter(Boolean).join(' · ');
+    return dt;
   }
   let tipEl = null;
   function hideTip() { if (tipEl) tipEl.remove(); tipEl = null; }
@@ -3519,6 +3609,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   });
   document.addEventListener('input', e => {
     const t = e.target;
+    if (!(pop && pop.contains(t))) return;   // listener على document — التابين بيشاركوه، فكل واحد بيتجاهل حقول قايمة التاني
     if (t.dataset.q !== undefined) { st.q[t.dataset.q] = t.value; t.classList.toggle('has-value', !!t.value.trim()); changed(); }
     else if (t.dataset.d) { const d = st.date[t.dataset.dk]; d[t.dataset.d] = t.value; d.preset = ''; d.month = ''; changed(); markDatePop(); }
     else if (t.dataset.r) { st.num[t.dataset.rk][t.dataset.r] = t.value; changed(); }
@@ -3535,7 +3626,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   // Enter داخل أي حقل في قائمة الفلتر = اقفل القائمة والفلتر يفضل · Escape يقفل (قايمة الساعة الأول)
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') { if (tpEl) { closeTp(); return; } if (pop) closePop(); return; }
-    if (e.key === 'Enter' && !e.isComposing && pop && popKey === 'orderNo' && pop.contains(e.target) && e.target.matches('input[data-q]') && commitTok('orderNo')) { e.preventDefault(); return; }
+    if (e.key === 'Enter' && !e.isComposing && pop && Q_KEYS.includes(popKey) && pop.contains(e.target) && e.target.matches('input[data-q]') && commitTok(popKey)) { e.preventDefault(); return; }
     if (e.key === 'Enter' && pop && pop.contains(e.target) && e.target.matches('input[data-q],input[data-r],input[data-d]')) { e.preventDefault(); e.target.blur(); closePop(); return; }
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('#pdHead [data-sort]')) { e.preventDefault(); toggleSort(e.target.dataset.sort); }
   });
@@ -3545,7 +3636,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   // ══ التحكم اللايف في عرض الأعمدة (§ 9ب) — «كل الأعمدة متماثلة بالتناسب» ══
   // W = العرض المفضّل لكل عمود · E = العرض الفعلي حسب مساحة الكارت. السحب: العمود المتسحب
   // «مثبّت» والباقي بيتمدّد/بيتضغط حواليه · دبل كليك = ضبط تلقائي · محفوظ في localStorage (LS_COLS).
-  const MIN_W = 64, MAX_W = 700, INIT_CAP = 260, SOFT_MIN = 90;
+  const MIN_W = 64, MAX_W = 700, INIT_CAP = 260, SOFT_MIN = 110;
   const W = {}; let wReady = false, drag = null, wBadge = null, wRaf = 0;
   const tbl = () => Q('#pdTbl');
   const availW = () => { const sc = Q('#pdScroll'); return sc ? sc.clientWidth : 0; };
@@ -3565,10 +3656,10 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (S > avail && !free) {
       for (const lim of [SOFT_MIN, MIN_W]) {
         const need = sumOf(E) - avail; if (need <= 0) break;
-        let ex = 0; COLS.forEach(c => { if (c.k !== pin) ex += E[c.k] - Math.min(E[c.k], lim); });
+        let ex = 0; COLS.forEach(c => { if (c.k !== pin && !c.keep) ex += E[c.k] - Math.min(E[c.k], lim); });
         if (ex <= 0) continue;
         const r = Math.min(1, need / ex);
-        COLS.forEach(c => { if (c.k === pin) return; const w = E[c.k], f = Math.min(w, lim); E[c.k] = Math.max(f, Math.floor(w - (w - f) * r)); });
+        COLS.forEach(c => { if (c.k === pin || c.keep) return; const w = E[c.k], f = Math.min(w, lim); E[c.k] = Math.max(f, Math.floor(w - (w - f) * r)); });
       }
       if (sumOf(E) > avail) COLS.forEach(c => { E[c.k] = W[c.k]; });   // مش هيتّسع حتى بأقل عرض → المفضّل + سكرول
     } else if (S < avail) {
@@ -3671,9 +3762,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   function reset() {
     clearTimeout(fetchTimer); reqId++;
     data = null; pageNo = 1; loadedOnce = false;
-    MS_KEYS.forEach(k => st.ms[k].clear());
-    st.num.amount = { from: '', to: '' }; st.q.orderNo = ''; st.tok.orderNo = [];
-    DATE_KEYS.forEach(resetDate); TIME_KEYS.forEach(resetTm); st.sort = { key: null, dir: null };
+    resetFilters(); st.sort = { key: null, dir: null };
     closePop(); hideTip();
     Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>`;
     Q('#pdCount').textContent = '—'; Q('#pdUpd').textContent = '';

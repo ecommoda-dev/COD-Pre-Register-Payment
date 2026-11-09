@@ -2,12 +2,12 @@
 
 # تسجيل الدفع المسبق — COD (`COD-Pre-Register-Payment`)
 
-![version](https://img.shields.io/badge/version-v1.5.0-blue)
+![version](https://img.shields.io/badge/version-v1.6.0-blue)
 
 **بتعمل إيه:** الموظف بيسجّل دفع أوردر COD مسبقًا على شوبيفاي (capture transaction)
 قبل التحصيل الفعلي من المندوب، وبيتحطّ مفتاح "معلّق" في KV لحد ما التحصيل يتم.
 **مين بيستخدمها:** حسابات · تحصيل COD
-**الإصدار:** Worker `v2.7.0` · الواجهة `v2.6.0`   ← الاتنين مستقلين، طبيعي يختلفوا
+**الإصدار:** Worker `v2.8.0` · الواجهة `v2.7.0`   ← الاتنين مستقلين، طبيعي يختلفوا
 
 ## الروابط
 
@@ -27,7 +27,7 @@
 | `checkPending` / `clearPending` / `listPending` | **API داخلي لـ `cod-payment-center-worker` — شكل الرد مقفول، ممنوع تغييره** |
 | `check_employee` / `register_pin` / `verify_employee` / `log_logout` / `get_employees` | Universal D1 Auth |
 | `get_logs` / `get_logs_count` / `get_logs_export` / `get_logs_facets` | سجل العمليات — فلترة (`employees` · `results` (`success`/`warning`/`none`) · `orders` · `amountFrom`/`amountTo` · `search` · `dateFrom`/`dateTo` — **يوم بتوقيت القاهرة**) وترتيب (`sortKey`/`sortDir`) وصفحات، كلهم server-side. `get_logs_facets` بيرجّع عدّاد كل موظف/نتيجة مقابل الفلاتر التانية. التصدير بيرجّع `cap`/`total`/`truncated` |
-| `pending_details` | تاب «المعلّقة والمحصّلة» — **GET · قراءة بس.** KV + D1 (التسجيل + التحصيل) + شوبيفاي الحية بنداء `nodes` واحد. فلترة (`statuses` · `employees` · `orders` · `amountFrom`/`amountTo` · `dateFrom`/`dateTo` · `timeFrom`/`timeTo`) وترتيب (`sortKey`/`sortDir` — whitelist `PD_SORT`) وصفحات (≤100)، كلهم server-side. بيرجّع `facets` (عدّاد كل حالة/موظف مقابل الفلاتر التانية) endpoint **منفصل** عن `listPending` (شكل ردّه مقفول) |
+| `pending_details` | تاب «المعلّقة والمحصّلة» — **GET · قراءة بس.** KV + D1 (التسجيل + التحصيل) + شوبيفاي الحية بنداء `nodes` واحد. فلترة (`statuses` · `employees` · `orders` · `amountFrom`/`amountTo` · `dateFrom`/`dateTo` · `timeFrom`/`timeTo` · `couriers` · `items` · `cAmountFrom`/`cAmountTo` · `cDateFrom`/`cDateTo` · `cTimeFrom`/`cTimeTo` (التحصيل) · `custs` · `fins` · `s1` · `s2` — القوايم الحرّة بتتفصل بـ `\|\|`) وترتيب (`sortKey`/`sortDir` — whitelist `PD_SORT`) وصفحات (≤100)، كلهم server-side. بيرجّع `facets` (عدّاد كل حالة/موظف/مندوب/SKU/حالة شوبيفاي/S1/S2 مقابل الفلاتر التانية) و`liveBlocked` لو فلتر حي اتجاوز السقف endpoint **منفصل** عن `listPending` (شكل ردّه مقفول) |
 | `diag` / `get_config` | فحص ذاتي + نسخة الـ Worker |
 
 ## D1
@@ -158,9 +158,13 @@ Exclude paths : (فاضي)
   استعلام «اتحصّل ولا لأ» بيستخدم subquery مش قايمة باراميترات.
 - **فشل شوبيفاي مش بيوقّع الـ endpoint:** بيرجّع `shopify: { ok:false, error }` والصفوف من KV+D1.
   (عكس `preview` اللي بيفشل كله مع `ACCESS_DENIED`.)
+- **كل أعمدة الجدول (١٥) ليها فلتر** (قرار 09-11-2026، كان قبلها المندوب والمنتجات والعميل وشوبيفاي مالهمش). **التاريخ والوقت أعمدة منفصلة** للتسجيل وللتحصيل (`regDate`/`regTime`/`collDate`/`collTime`) بفلتر وترتيب لكل واحد — `datetime-format.md` § 4b، والخلايا `nowrap` فعلًا (`td.col-num`).
+- **S1 / S2** = ميتافيلدز `custom.manual_status` / `custom.status_2_r_e` (من `getOrdersLiveState`) — قيم الفلتر حرفيًا من `ecommoda-order-lifecycle`، فلو اتغيّرت الـ choice list لازم `S1_VALUES`/`S2_VALUES` في الواجهة تتحدّث.
+- **عمود التحصيل = مبلغ الأوردر ده بس** (`value_after` من صف `cod_payment/payment`) — مش طرق الدفع ومش إجمالي الجلسة. بيتجاب بنفس استعلام `MAX(timestamp)` (SQLite بيجيب باقي الأعمدة من نفس الصف) فمفيش استعلام تاني للصفحة.
+- 🔴 **الفلاتر الحية (العميل · شوبيفاي الآن · S1 · S2) محتاجة شوبيفاي لكل الأوردرات المطابقة** قبل تقسيم الصفحات، فالـ Worker بيحدّها بـ `PD_LIVE_FILTER_CAP = 250` وبيرجّع `liveBlocked` (`too_many` / `shopify_failed`) — **مفيش فلترة صامتة على جزء من الداتا**. المجموعة `LIVE_CHUNK = 50` (تكلفة الأوردر ~٩ نقاط شوبيفاي) بالتسلسل، وكاش ٢ دقيقة في ذاكرة الـ isolate **بس** (ممنوع KV/D1 — بيانات شخصية). وقت فيه فلتر حي، عدّادات القوايم العادية بتبان «—» (مش بتتحسب على كل الصفوف).
 - ⛔ **بيانات العميل في رد الـ endpoint ده بس** — ممنوع `writeLog`/`extra`/تصدير (نفس قاعدة `preview`).
 - **الفلاتر في رأس العمود** (معيار `data-table-standard.md`) — القسم الموحّد: صف نتائج ← chips ← جدول بعناوين ثابتة وعرض أعمدة بالسحب. CSS الجدول مقيَّد بـ `.tbx` عشان ما يلمسش تاب السجل (لسه على الشكل القديم).
-- **الترتيب server-side**، ومفاتيح `data-sort` في الواجهة (`SORTMAP`) لازم تطابق `PD_SORT` في الـ Worker حرفيًا — مفتاح مش فيها بيرجع للافتراضي في صمت. المندوب والمنتجات والعميل وحالة شوبيفاي **مش قابلة للفلترة ولا الترتيب** (مشتقّة من `extra` أو من شوبيفاي الحية بعد تقسيم الصفحات).
+- **الترتيب server-side**، ومفاتيح `data-sort` في الواجهة (`SORTMAP`) لازم تطابق `PD_SORT` في الـ Worker حرفيًا — مفتاح مش فيها بيرجع للافتراضي في صمت. المنتجات والعميل وشوبيفاي الآن وS1 وS2 **قابلة للفلترة بس** (مشتقّة من `extra` أو من شوبيفاي الحية)؛ المندوب ومبلغ التحصيل وتاريخ/وقت التحصيل قابلين للترتيب كمان.
 - **استثناءات واعية من المعيار:** فلتر رقم الأوردر بدون اقتراحات لايف (محتاجة نداء للسيرفر مع كل حرف) · فلتر المبلغ نطاق بس (قايمة القيم مالهاش معنى).
 - **التاريخ والوقت بتوقيت القاهرة (Intl)**: الفلترة الدقيقة في الـ Worker في الذاكرة، والـ SQL بيوسّع التاريخ يوم من كل طرف عشان فرق UTC ما يضيّعش صفوف. (السجل `get_logs` بقى بيقارن حدود اليوم بتوقيت القاهرة كمان — `cairoMidnightUTC()`.)
 - الحالة بتتحسب على **كل** الصفوف قبل الصفحات (الفلتر والعدّادات صح)، والتفاصيل والنداء لشوبيفاي على الصفحة المعروضة بس.
@@ -222,7 +226,7 @@ git show b3f7906:index.js
 | ecommoda-constants | v3.1.0 |
 | shopify-graphql-helper | v1.0.0 |
 
-آخر مطابقة: 09-11-2026 · `index.js` v2.7.0 · `index.html` v2.6.0
+آخر مطابقة: 09-11-2026 · `index.js` v2.8.0 · `index.html` v2.7.0
 
 🔴 معلّقة: — لا شيء
 
@@ -279,6 +283,6 @@ git show b3f7906:index.js
 
 — لا شيء.
 
-آخر تحديث: 09-11-2026 — 17:00
+آخر تحديث: 09-11-2026 — 21:12
 
 </div>

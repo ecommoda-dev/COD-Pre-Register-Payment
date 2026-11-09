@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.7.0 — فلاتر رأس العمود في السجل: orders · amount · results · get_logs_facets)
+ * cod-pre-register-payment-worker  (v2.8.0 — تاب المعلّقة: فلاتر كل الأعمدة + S1/S2 + مبلغ التحصيل بس)
  *
  * skills: ecommoda-worker-builder v3.7.1 · ecommoda-constants v3.1.0 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -28,7 +28,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.7.0';
+const WORKER_VERSION = '2.8.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -627,9 +627,24 @@ async function listKvPendingIds(kv) {
   return { ids, complete };
 }
 
-// الحالة الحية من شوبيفاي — نداء nodes واحد للصفحة كلها (≤100 أوردر).
+// الحالة الحية من شوبيفاي (nodes) — بتتقسّم على مجموعات صغيرة: تكلفة الأوردر الواحد ~٩ نقاط
+// (أوبجكتس متداخلة + ميتافيلدين S1/S2) فمجموعة ٥٠ ≈ ٤٥٠ نقطة، تحت سقف الاستعلام الواحد (١٠٠٠).
+// ⛔ بيانات العميل للعرض/الفلترة بس. الكاش هنا في ذاكرة الـ isolate **بس** (TTL قصير، بيموت مع
+// الـ isolate) — ممنوع يتحط في KV/D1 (بيانات شخصية: مفيش تخزين دائم ليها في الأداة دي).
 // بترمي عند الفشل؛ اللي بينادي بيلقطها ويكمّل من غيرها.
+const LIVE_CHUNK = 50;
+const LIVE_TTL_MS = 120000;
+const LIVE_CACHE = new Map();   // orderId → { at, state }
+
 async function getOrdersLiveState(env, orderIds) {
+  const now = Date.now();
+  const out = {}, missing = [];
+  for (const id of orderIds) {
+    const c = LIVE_CACHE.get(id);
+    if (c && now - c.at < LIVE_TTL_MS) out[id] = c.state; else missing.push(id);
+  }
+  if (!missing.length) return out;
+
   assertEnv(env, 'shopify');
   const token = await getAccessToken(env);
   const query = `
@@ -640,22 +655,32 @@ async function getOrdersLiveState(env, orderIds) {
           customer { displayName phone }
           shippingAddress { name phone }
           totalOutstandingSet { shopMoney { amount } }
+          s1: metafield(namespace: "custom", key: "manual_status") { value }
+          s2: metafield(namespace: "custom", key: "status_2_r_e") { value }
         }
       }
     }
   `;
-  const data = await shopifyGQL(env, token, query,
-    { ids: orderIds.map(id => `gid://shopify/Order/${id}`) }, 'liveState');
-  const out = {};
-  for (const n of (data?.data?.nodes || [])) {
-    if (!n || !n.id) continue;
-    out[n.id.replace('gid://shopify/Order/', '')] = {
-      financialStatus: n.displayFinancialStatus || null,
-      cancelled:       !!n.cancelledAt,
-      outstanding:     n.totalOutstandingSet?.shopMoney?.amount ?? null,
-      customerName:    n.customer?.displayName || n.shippingAddress?.name || null,
-      customerPhone:   n.shippingAddress?.phone || n.customer?.phone || n.phone || null,
-    };
+  if (LIVE_CACHE.size > 3000) LIVE_CACHE.clear();
+  // بالتسلسل — التوازي على مجموعات كتير بيحرق bucket شوبيفاي ويرجّع THROTTLED
+  for (const ch of chunkArray(missing, LIVE_CHUNK)) {
+    const data = await shopifyGQL(env, token, query,
+      { ids: ch.map(id => `gid://shopify/Order/${id}`) }, 'liveState');
+    for (const n of (data?.data?.nodes || [])) {
+      if (!n || !n.id) continue;
+      const id = n.id.replace('gid://shopify/Order/', '');
+      const state = {
+        financialStatus: n.displayFinancialStatus || null,
+        cancelled:       !!n.cancelledAt,
+        outstanding:     n.totalOutstandingSet?.shopMoney?.amount ?? null,
+        customerName:    n.customer?.displayName || n.shippingAddress?.name || null,
+        customerPhone:   n.shippingAddress?.phone || n.customer?.phone || n.phone || null,
+        s1:              n.s1?.value || null,   // custom.manual_status
+        s2:              n.s2?.value || null,   // custom.status_2_r_e
+      };
+      out[id] = state;
+      LIVE_CACHE.set(id, { at: Date.now(), state });
+    }
   }
   return out;
 }
@@ -681,23 +706,50 @@ function addDaysStr(s, n) {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-// ⚠️ whitelist إجباري للترتيب (نفس مبدأ LOG_SORT_COLUMNS). الأعمدة المشتقّة من
-// extra (المندوب · المنتجات) والبيانات الحية من شوبيفاي مش قابلة للترتيب هنا.
+// ⚠️ whitelist إجباري للترتيب (نفس مبدأ LOG_SORT_COLUMNS). المنتجات والعميل وأعمدة شوبيفاي الحية
+// (الحالة المالية · S1 · S2) قابلة للفلترة بس — مش للترتيب (مشتقّة من extra أو من شوبيفاي الحية).
 const PD_SORT = {
   registeredAt: (i) => i.registeredAt || '',
   employee:     (i) => i.registeredBy || '',
   orderName:    (i) => Number(i.orderDigits) || 0,
   amount:       (i) => Number(i.amount) || 0,
+  courier:      (i) => i.courier || '',
   status:       (i) => i.status,
   collectedAt:  (i) => i.collectedAt || '',
+  collAmount:   (i) => Number(i.collAmount) || 0,
 };
+
+const PD_NONE = '__none__';           // قيمة «بدون» في فلاتر المندوب/S1/S2
+const PD_LIVE_FILTER_CAP = 250;       // أقصى عدد أوردرات نجيب لها شوبيفاي الحية عشان نفلتر بيها
+
+// ── فلاتر الأعمدة الحية (بتتطبّق بعد جلب شوبيفاي لمجموعة المرشّحين) ──
+function pdCustMatch(lv, tokens) {
+  if (!tokens.length) return true;
+  if (!lv || lv.notFound) return false;
+  const name = String(lv.customerName || '').toLowerCase();
+  const pd = String(lv.customerPhone || '').replace(/\D/g, '');
+  const pdAlt = pd.startsWith('20') ? '0' + pd.slice(2) : pd;   // +20100… = 0100…
+  return tokens.some(t => {
+    const td = t.replace(/\D/g, '');
+    return (!!name && name.includes(t.toLowerCase())) || (td.length >= 3 && (pd.includes(td) || pdAlt.includes(td)));
+  });
+}
+function pdFinKeys(lv) {
+  if (!lv || lv.notFound) return ['NOT_FOUND'];
+  const k = [];
+  if (lv.cancelled) k.push('CANCELLED');
+  if (lv.financialStatus) k.push(lv.financialStatus);
+  return k;
+}
+const pdSVal = (lv, key) => (lv && !lv.notFound && lv[key]) ? lv[key] : PD_NONE;
 
 async function buildPendingDetails(env, p) {
   // ── ١) المصادر الأساسية بالتوازي ────────────────────────────────
   // التاريخ في SQL **موسَّع يوم من كل طرف** عشان فرق UTC/القاهرة ما يضيّعش صفوف،
   // والفلترة الدقيقة بتوقيت القاهرة بتتم في الذاكرة بعد كده (نفس عرض الواجهة).
+  // extra بيتجاب لكل الصفوف (≤ السقف) عشان المندوب والمنتجات يتفلتروا قبل تقسيم الصفحات.
   const { sql, b } = buildLogFilterSQL(
-    'SELECT id, order_id, order_name, timestamp, employee, value_after',
+    'SELECT id, order_id, order_name, timestamp, employee, value_after, extra',
     { tool: TOOL_NAME, types: ['preregister'],
       dateFrom: p.dateFrom ? addDaysStr(p.dateFrom, -1) : null,
       dateTo:   p.dateTo   ? addDaysStr(p.dateTo, 1)    : null });
@@ -724,29 +776,38 @@ async function buildPendingDetails(env, p) {
     else byOrder.set(r.order_id, { ...r, registrations: 1 });
   }
 
-  // ── ٢) اتحصّل ولا لأ؟ — صف payment في لوج أداة التحصيل بعد وقت التسجيل ──
-  const collectedAt = new Map();
+  // ── ٢) اتحصّل ولا لأ؟ — آخر صف payment في لوج أداة التحصيل بعد وقت التسجيل ──
+  // SQLite: مع MAX() واحد بس، الأعمدة العادية (employee · value_after) بتيجي من نفس الصف صاحب الـ MAX.
+  // value_after = مبلغ الأوردر ده (مش إجمالي جلسة التحصيل) — ده المطلوب عرضه.
+  const collection = new Map();   // order_id → { at, by, amount }
   if (byOrder.size) {
     const minTs = regRows[regRows.length - 1].timestamp;
     const col = await env.DB.prepare(`
-      SELECT order_id, MAX(timestamp) AS collected_at FROM logs
+      SELECT order_id, MAX(timestamp) AS collected_at, employee AS coll_by, value_after AS coll_amount FROM logs
       WHERE tool = ? AND type = 'payment' AND timestamp >= ?
         AND order_id IN (SELECT order_id FROM logs WHERE tool = ? AND type = 'preregister')
       GROUP BY order_id
     `).bind(PAYMENT_TOOL, minTs, TOOL_NAME).all();
-    for (const r of (col.results || [])) collectedAt.set(r.order_id, r.collected_at);
+    for (const r of (col.results || []))
+      collection.set(r.order_id, { at: r.collected_at, by: r.coll_by || null, amount: r.coll_amount });
   }
 
+  const skusOf = (ex) => [...new Set((ex.lineItems || []).map(li => String(li?.sku ?? '').trim()).filter(Boolean))];
   const items = [];
   for (const r of byOrder.values()) {
     const inKV = kv.ids.has(r.order_id);
-    const col  = collectedAt.get(r.order_id);
-    const collected = !!col && col >= r.timestamp;
+    const c = collection.get(r.order_id);
+    const collected = !!c && c.at >= r.timestamp;
+    const ex = safeJSON(r.extra);
     items.push({
-      orderId: r.order_id, orderName: r.order_name, rowId: r.id,
+      orderId: r.order_id, orderName: r.order_name,
       registeredAt: r.timestamp, registeredBy: r.employee || null,
       amount: r.value_after, registrations: r.registrations, inKV,
-      collectedAt: collected ? col : null,
+      collectedAt: collected ? c.at : null,
+      collBy: collected ? c.by : null,
+      collAmount: collected ? c.amount : null,
+      courier: ex.courier || null, lineItems: ex.lineItems || [], skus: skusOf(ex),
+      transactionId: ex.transactionId || null, result: ex.result || null,
       status: inKV ? (collected ? 'stale' : 'pending') : (collected ? 'collected' : 'cleared'),
     });
   }
@@ -763,10 +824,12 @@ async function buildPendingDetails(env, p) {
     const vals = await Promise.all(slice.map(async id => [id, safeJSON(await env.PRE_REG_KV.get(`preReg:${id}`))]));
     for (const [id, e] of vals) {
       items.push({
-        orderId: id, orderName: e.orderName || null, rowId: null,
+        orderId: id, orderName: e.orderName || null,
         registeredAt: e.preRegisteredAt || null, registeredBy: null,
         amount: e.amount != null ? Number(e.amount) : null, registrations: 0, inKV: true,
-        collectedAt: null, status: 'kv_only', _kv: e,
+        collectedAt: null, collBy: null, collAmount: null,
+        courier: e.courier || null, lineItems: e.lineItems || [], skus: skusOf(e),
+        transactionId: null, result: null, status: 'kv_only',
       });
     }
   }
@@ -774,29 +837,94 @@ async function buildPendingDetails(env, p) {
   // ── ٤) الفلترة (بتوقيت القاهرة) + الـ facets + الترتيب + الصفحة ─────
   // كل فلتر شرط مستقل، والـ facet بتاع أي فلتر بيتعدّ على الصفوف المطابقة لكل
   // الفلاتر **التانية** — فعدّاد قيمة جوّه قايمة الفلتر بيقول «هتجيب كام لو اخترتها».
+  // الأعمدة الحية (العميل · الحالة المالية · S1 · S2) بتتفلتر بعد جلب شوبيفاي لمجموعة المرشّحين
+  // (اللي عدّت الفلاتر التانية) — وبسقف PD_LIVE_FILTER_CAP، ولو اتجاوز بيرجع liveBlocked صريح.
   const emps = p.employees || [], stats = p.statuses || [], ords = p.orders || [];
+  const cour = p.couriers || [], its = p.items || [];
   const aF = Number.isFinite(p.amountFrom) ? p.amountFrom : null;
   const aT = Number.isFinite(p.amountTo)   ? p.amountTo   : null;
-  const facets = { status: {}, employee: {} };
+  const cAF = Number.isFinite(p.cAmountFrom) ? p.cAmountFrom : null;
+  const cAT = Number.isFinite(p.cAmountTo)   ? p.cAmountTo   : null;
+  const lf = { cust: p.custs || [], fin: p.fins || [], s1: p.s1 || [], s2: p.s2 || [] };
+  const needLive = Object.values(lf).some(a => a.length > 0);
+
+  const facets = { status: {}, employee: {}, courier: {}, items: {}, live: null };
   PD_STATUSES.forEach(s => { facets.status[s] = 0; });
-  const passing = [];
+  // كل القيم الموجودة (حتى بعدّاد صفر) عشان القايمة ما تفضّيش لما فلتر تاني يستبعدها
+  for (const i of items) {
+    if (i.registeredBy && !(i.registeredBy in facets.employee)) facets.employee[i.registeredBy] = 0;
+    const ck = i.courier || PD_NONE; if (!(ck in facets.courier)) facets.courier[ck] = 0;
+    i.skus.forEach(sk => { if (!(sk in facets.items)) facets.items[sk] = 0; });
+  }
+
+  const candidates = [];
   for (const i of items) {
     const { day, hm } = cairoDayHM(i.registeredAt);
+    const cd = cairoDayHM(i.collectedAt);
     i.orderDigits = String(i.orderName || '').replace(/\D/g, '');
     const amt = i.amount == null ? NaN : Number(i.amount);
+    const camt = i.collAmount == null ? NaN : Number(i.collAmount);
+    const ck = i.courier || PD_NONE;
     const ok = {
-      emp:    !emps.length || (!!i.registeredBy && emps.includes(i.registeredBy)),
-      status: !stats.length || stats.includes(i.status),
-      orders: !ords.length || ords.some(t => i.orderDigits.includes(t)),
-      amount: (aF === null || amt >= aF) && (aT === null || amt <= aT),
-      date:   (!p.dateFrom || (!!day && day >= p.dateFrom)) && (!p.dateTo || (!!day && day <= p.dateTo)),
-      time:   (!p.timeFrom || (!!hm && hm >= p.timeFrom)) && (!p.timeTo || (!!hm && hm <= p.timeTo)),
+      emp:     !emps.length || (!!i.registeredBy && emps.includes(i.registeredBy)),
+      status:  !stats.length || stats.includes(i.status),
+      orders:  !ords.length || ords.some(t => i.orderDigits.includes(t)),
+      amount:  (aF === null || amt >= aF) && (aT === null || amt <= aT),
+      date:    (!p.dateFrom || (!!day && day >= p.dateFrom)) && (!p.dateTo || (!!day && day <= p.dateTo)),
+      time:    (!p.timeFrom || (!!hm && hm >= p.timeFrom)) && (!p.timeTo || (!!hm && hm <= p.timeTo)),
+      courier: !cour.length || cour.includes(ck),
+      items:   !its.length || i.skus.some(sk => its.includes(sk)),
+      cdate:   (!p.cDateFrom || (!!cd.day && cd.day >= p.cDateFrom)) && (!p.cDateTo || (!!cd.day && cd.day <= p.cDateTo)),
+      ctime:   (!p.cTimeFrom || (!!cd.hm && cd.hm >= p.cTimeFrom)) && (!p.cTimeTo || (!!cd.hm && cd.hm <= p.cTimeTo)),
+      camount: (cAF === null || camt >= cAF) && (cAT === null || camt <= cAT),
     };
     const failed = Object.keys(ok).filter(k => !ok[k]);
-    if (!failed.length) passing.push(i);
+    if (!failed.length) candidates.push(i);
     if (failed.every(k => k === 'status')) facets.status[i.status] += 1;
-    if (failed.every(k => k === 'emp') && i.registeredBy)
-      facets.employee[i.registeredBy] = (facets.employee[i.registeredBy] || 0) + 1;
+    if (failed.every(k => k === 'emp') && i.registeredBy) facets.employee[i.registeredBy] += 1;
+    if (failed.every(k => k === 'courier')) facets.courier[ck] += 1;
+    if (failed.every(k => k === 'items')) i.skus.forEach(sk => { facets.items[sk] += 1; });
+  }
+  // لو فيه فلتر حي، عدّادات الأعمدة العادية بتتحوّل «—» (مش محسوبة على كل الصفوف) — صريح بدل رقم غلط
+  const blankCounts = () => {
+    for (const k of ['status', 'employee', 'courier', 'items']) for (const v in facets[k]) facets[k][v] = null;
+  };
+
+  // ── الفلاتر الحية ───────────────────────────────────────────────
+  let live = {}, shopify = { ok: true }, liveBlocked = null, passing = candidates;
+  if (needLive) {
+    blankCounts();
+    if (candidates.length > PD_LIVE_FILTER_CAP)
+      liveBlocked = { reason: 'too_many', candidates: candidates.length, cap: PD_LIVE_FILTER_CAP };
+    else if (candidates.length) {
+      try { live = await getOrdersLiveState(env, candidates.map(i => i.orderId)); }
+      catch (e) { shopify = { ok: false, error: e.message }; liveBlocked = { reason: 'shopify_failed', error: e.message }; }
+    }
+    if (liveBlocked) {
+      return {
+        rows: [], total: 0, facets, liveBlocked, shopify,
+        cap: PENDING_DETAILS_CAP, truncated, orphansTruncated, kvComplete: kv.complete,
+      };
+    }
+    const FIN_ALL = ['PAID', 'PENDING', 'PARTIALLY_PAID', 'AUTHORIZED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'VOIDED', 'EXPIRED', 'CANCELLED', 'NOT_FOUND'];
+    facets.live = { fin: {}, s1: {}, s2: {} };
+    FIN_ALL.forEach(v => { facets.live.fin[v] = 0; });
+    passing = [];
+    for (const i of candidates) {
+      const lv = live[i.orderId] || { notFound: true };
+      const fk = pdFinKeys(lv), v1 = pdSVal(lv, 's1'), v2 = pdSVal(lv, 's2');
+      const ok = {
+        cust: pdCustMatch(lv, lf.cust),
+        fin:  !lf.fin.length || fk.some(k => lf.fin.includes(k)),
+        s1:   !lf.s1.length || lf.s1.includes(v1),
+        s2:   !lf.s2.length || lf.s2.includes(v2),
+      };
+      const failed = Object.keys(ok).filter(k => !ok[k]);
+      if (!failed.length) passing.push(i);
+      if (failed.every(k => k === 'fin')) fk.forEach(k => { facets.live.fin[k] = (facets.live.fin[k] || 0) + 1; });
+      if (failed.every(k => k === 's1')) facets.live.s1[v1] = (facets.live.s1[v1] || 0) + 1;
+      if (failed.every(k => k === 's2')) facets.live.s2[v2] = (facets.live.s2[v2] || 0) + 1;
+    }
   }
 
   const keyFn = PD_SORT[p.sortKey];
@@ -811,48 +939,22 @@ async function buildPendingDetails(env, p) {
   });
   const page = passing.slice(p.offset, p.offset + p.limit);
 
-  // ── ٥) تفاصيل الصفحة بس: D1 (المنتجات/المندوب) + التحصيل + شوبيفاي ──
-  const regDetail = new Map();   // rowId → extra
-  for (const ch of chunkArray(page.filter(i => i.rowId).map(i => i.rowId))) {
-    const r = await env.DB.prepare(`SELECT id, extra FROM logs WHERE id IN (${ch.map(() => '?').join(',')})`)
-      .bind(...ch).all();
-    for (const row of (r.results || [])) regDetail.set(row.id, safeJSON(row.extra));
-  }
-
-  const collDetail = new Map();  // order_id → آخر صف تحصيل
-  const needColl = page.filter(i => i.status === 'collected' || i.status === 'stale');
-  for (const ch of chunkArray(needColl.map(i => i.orderId))) {
-    const r = await env.DB.prepare(`
-      SELECT order_id, timestamp, employee, value_after, extra FROM logs
-      WHERE tool = '${PAYMENT_TOOL}' AND type = 'payment' AND order_id IN (${ch.map(() => '?').join(',')})
-      ORDER BY timestamp DESC
-    `).bind(...ch).all();
-    for (const row of (r.results || [])) if (!collDetail.has(row.order_id)) collDetail.set(row.order_id, row);
-  }
-
-  let live = {}, shopify = { ok: true };
-  if (page.length) {
+  // ── ٥) شوبيفاي الحية للصفحة (لو ما اتجابتش للفلترة) ─────────────────
+  if (!needLive && page.length) {
     try { live = await getOrdersLiveState(env, page.map(i => i.orderId)); }
     catch (e) { shopify = { ok: false, error: e.message }; }
   }
 
-  const rows = page.map(i => {
-    const ex = i.rowId ? (regDetail.get(i.rowId) || {}) : (i._kv || {});
-    const c  = collDetail.get(i.orderId);
-    const cx = c ? safeJSON(c.extra) : null;
-    return {
-      orderId: i.orderId, orderName: i.orderName, status: i.status, inKV: i.inKV,
-      registeredAt: i.registeredAt, registeredBy: i.registeredBy,
-      amount: i.amount, registrations: i.registrations,
-      courier: ex.courier || null, lineItems: ex.lineItems || [],
-      transactionId: ex.transactionId || null, result: ex.result || null,
-      collection: c ? {
-        at: c.timestamp, by: c.employee || null, amount: c.value_after,
-        courier: cx.courier || null, paymentMethods: cx.paymentMethods || null,
-      } : null,
-      live: shopify.ok ? (live[i.orderId] || { notFound: true }) : null,
-    };
-  });
+  const rows = page.map(i => ({
+    orderId: i.orderId, orderName: i.orderName, status: i.status, inKV: i.inKV,
+    registeredAt: i.registeredAt, registeredBy: i.registeredBy,
+    amount: i.amount, registrations: i.registrations,
+    courier: i.courier, lineItems: i.lineItems,
+    transactionId: i.transactionId, result: i.result,
+    // مبلغ الأوردر ده بس — من غير تفاصيل جلسة التحصيل (كاش/إنستاباي/محفظة)
+    collection: i.collectedAt ? { at: i.collectedAt, by: i.collBy, amount: i.collAmount } : null,
+    live: shopify.ok ? (live[i.orderId] || { notFound: true }) : null,
+  }));
 
   return {
     rows, total: passing.length, facets,
@@ -1050,6 +1152,8 @@ export default {
       if (action === 'pending_details') {
         assertEnv(env);   // DB + PRE_REG_KV بس — شوبيفاي بيتفحص جوّه وبيتحمّل فشله
         const csv = (k) => (url.searchParams.get(k) || '').split(',').map(s => s.trim()).filter(Boolean);
+        // قوايم القيم الحرّة (مندوب · SKU · عميل · S1/S2) بتتفصل بـ '||' — القيمة نفسها ممكن تحتوي فاصلة
+        const list = (k) => (url.searchParams.get(k) || '').split('||').map(x => x.trim()).filter(Boolean);
         const num  = (k) => { const v = url.searchParams.get(k); return v === null || v === '' ? NaN : Number(v); };
         const hm   = (k) => { const v = url.searchParams.get(k) || ''; return /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null; };
         const day  = (k) => { const v = url.searchParams.get(k) || ''; return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; };
@@ -1060,6 +1164,11 @@ export default {
           amountFrom: num('amountFrom'), amountTo: num('amountTo'),
           dateFrom:   day('dateFrom'),   dateTo:   day('dateTo'),
           timeFrom:   hm('timeFrom'),    timeTo:   hm('timeTo'),
+          couriers:   list('couriers'),  items: list('items'),
+          cAmountFrom: num('cAmountFrom'), cAmountTo: num('cAmountTo'),
+          cDateFrom:  day('cDateFrom'),  cDateTo:  day('cDateTo'),
+          cTimeFrom:  hm('cTimeFrom'),   cTimeTo:  hm('cTimeTo'),
+          custs:      list('custs'), fins: list('fins'), s1: list('s1'), s2: list('s2'),
           sortKey:    url.searchParams.get('sortKey') || null,   // whitelist جوّه buildPendingDetails (PD_SORT)
           sortDir:    url.searchParams.get('sortDir') || 'desc',
           limit:      Math.min(Math.max(parseInt(url.searchParams.get('limit')  || '100') || 100, 1), 100),
