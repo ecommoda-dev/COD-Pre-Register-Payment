@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.5.0 — تاب المعلّقة والمحصّلة: pending_details)
+ * cod-pre-register-payment-worker  (v2.6.0 — pending_details: فلاتر رأس العمود + ترتيب server-side)
  *
  * skills: ecommoda-worker-builder v3.7.1 · ecommoda-constants v3.1.0 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -28,7 +28,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.5.0';
+const WORKER_VERSION = '2.6.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -606,12 +606,47 @@ async function getOrdersLiveState(env, orderIds) {
   return out;
 }
 
+// ── توقيت القاهرة محسوب بـ Intl (ecommoda-constants §13) — مش إزاحة ثابتة ──
+const _cairoFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', hourCycle: 'h23',
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+function cairoParts(d) {
+  const o = {};
+  for (const p of _cairoFmt.formatToParts(d)) if (p.type !== 'literal') o[p.type] = p.value;
+  if (o.hour === '24') o.hour = '00';
+  return o;
+}
+function cairoDayHM(iso) {
+  if (!iso) return { day: '', hm: '' };
+  const d = new Date(iso);
+  if (isNaN(d)) return { day: '', hm: '' };
+  const p = cairoParts(d);
+  return { day: `${p.year}-${p.month}-${p.day}`, hm: `${p.hour}:${p.minute}` };
+}
+function addDaysStr(s, n) {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+}
+
+// ⚠️ whitelist إجباري للترتيب (نفس مبدأ LOG_SORT_COLUMNS). الأعمدة المشتقّة من
+// extra (المندوب · المنتجات) والبيانات الحية من شوبيفاي مش قابلة للترتيب هنا.
+const PD_SORT = {
+  registeredAt: (i) => i.registeredAt || '',
+  employee:     (i) => i.registeredBy || '',
+  orderName:    (i) => Number(i.orderDigits) || 0,
+  amount:       (i) => Number(i.amount) || 0,
+  status:       (i) => i.status,
+  collectedAt:  (i) => i.collectedAt || '',
+};
+
 async function buildPendingDetails(env, p) {
   // ── ١) المصادر الأساسية بالتوازي ────────────────────────────────
+  // التاريخ في SQL **موسَّع يوم من كل طرف** عشان فرق UTC/القاهرة ما يضيّعش صفوف،
+  // والفلترة الدقيقة بتوقيت القاهرة بتتم في الذاكرة بعد كده (نفس عرض الواجهة).
   const { sql, b } = buildLogFilterSQL(
     'SELECT id, order_id, order_name, timestamp, employee, value_after',
-    { tool: TOOL_NAME, types: ['preregister'], employees: p.employees,
-      search: p.search, dateFrom: p.dateFrom, dateTo: p.dateTo });
+    { tool: TOOL_NAME, types: ['preregister'],
+      dateFrom: p.dateFrom ? addDaysStr(p.dateFrom, -1) : null,
+      dateTo:   p.dateTo   ? addDaysStr(p.dateTo, 1)    : null });
 
   const [kv, regRes, allRegRes] = await Promise.all([
     listKvPendingIds(env.PRE_REG_KV),
@@ -657,44 +692,70 @@ async function buildPendingDetails(env, p) {
       orderId: r.order_id, orderName: r.order_name, rowId: r.id,
       registeredAt: r.timestamp, registeredBy: r.employee || null,
       amount: r.value_after, registrations: r.registrations, inKV,
+      collectedAt: collected ? col : null,
       status: inKV ? (collected ? 'stale' : 'pending') : (collected ? 'collected' : 'cleared'),
     });
   }
 
   // ── ٣) مفاتيح KV من غير صف تسجيل في D1 (مثلاً backlog بوسطة) ──────
-  // التفاصيل (الاسم/الوقت) في قيمة المفتاح نفسها، فبنقراها — بسقف. فلتر الموظف
-  // بيستبعدها لأن مفيش موظف مسجّل ليها.
+  // التفاصيل (الاسم/الوقت) في قيمة المفتاح نفسها، فبنقراها — بسقف. مفيش موظف
+  // مسجّل ليها، فأي فلتر موظف بيستبعدها.
   const allReg = new Set((allRegRes.results || []).map(r => r.order_id));
   const orphanIds = [...kv.ids].filter(id => !allReg.has(id));
   let orphansTruncated = false;
-  if (orphanIds.length && !(p.employees && p.employees.length)) {
+  if (orphanIds.length) {
     const slice = orphanIds.slice(0, PENDING_ORPHAN_CAP);
     orphansTruncated = orphanIds.length > slice.length;
-    const q = (p.search || '').toLowerCase();
     const vals = await Promise.all(slice.map(async id => [id, safeJSON(await env.PRE_REG_KV.get(`preReg:${id}`))]));
     for (const [id, e] of vals) {
-      const day = (e.preRegisteredAt || '').slice(0, 10);
-      if (q && !(String(e.orderName || '').toLowerCase().includes(q) || id.includes(q))) continue;
-      if (p.dateFrom && !(day && day >= p.dateFrom)) continue;
-      if (p.dateTo   && !(day && day <= p.dateTo))   continue;
       items.push({
         orderId: id, orderName: e.orderName || null, rowId: null,
         registeredAt: e.preRegisteredAt || null, registeredBy: null,
         amount: e.amount != null ? Number(e.amount) : null, registrations: 0, inKV: true,
-        status: 'kv_only',
-        _kv: e,
+        collectedAt: null, status: 'kv_only', _kv: e,
       });
     }
   }
 
-  // ── ٤) عدّادات الحالات (قبل فلتر الحالة) + الفلترة + الصفحة ────────
-  items.sort((a, b2) => String(b2.registeredAt || '').localeCompare(String(a.registeredAt || '')));
-  const counts = { all: items.length };
-  PD_STATUSES.forEach(s => { counts[s] = 0; });
-  items.forEach(i => { counts[i.status] += 1; });
+  // ── ٤) الفلترة (بتوقيت القاهرة) + الـ facets + الترتيب + الصفحة ─────
+  // كل فلتر شرط مستقل، والـ facet بتاع أي فلتر بيتعدّ على الصفوف المطابقة لكل
+  // الفلاتر **التانية** — فعدّاد قيمة جوّه قايمة الفلتر بيقول «هتجيب كام لو اخترتها».
+  const emps = p.employees || [], stats = p.statuses || [], ords = p.orders || [];
+  const aF = Number.isFinite(p.amountFrom) ? p.amountFrom : null;
+  const aT = Number.isFinite(p.amountTo)   ? p.amountTo   : null;
+  const facets = { status: {}, employee: {} };
+  PD_STATUSES.forEach(s => { facets.status[s] = 0; });
+  const passing = [];
+  for (const i of items) {
+    const { day, hm } = cairoDayHM(i.registeredAt);
+    i.orderDigits = String(i.orderName || '').replace(/\D/g, '');
+    const amt = i.amount == null ? NaN : Number(i.amount);
+    const ok = {
+      emp:    !emps.length || (!!i.registeredBy && emps.includes(i.registeredBy)),
+      status: !stats.length || stats.includes(i.status),
+      orders: !ords.length || ords.some(t => i.orderDigits.includes(t)),
+      amount: (aF === null || amt >= aF) && (aT === null || amt <= aT),
+      date:   (!p.dateFrom || (!!day && day >= p.dateFrom)) && (!p.dateTo || (!!day && day <= p.dateTo)),
+      time:   (!p.timeFrom || (!!hm && hm >= p.timeFrom)) && (!p.timeTo || (!!hm && hm <= p.timeTo)),
+    };
+    const failed = Object.keys(ok).filter(k => !ok[k]);
+    if (!failed.length) passing.push(i);
+    if (failed.every(k => k === 'status')) facets.status[i.status] += 1;
+    if (failed.every(k => k === 'emp') && i.registeredBy)
+      facets.employee[i.registeredBy] = (facets.employee[i.registeredBy] || 0) + 1;
+  }
 
-  const filtered = p.statuses && p.statuses.length ? items.filter(i => p.statuses.includes(i.status)) : items;
-  const page = filtered.slice(p.offset, p.offset + p.limit);
+  const keyFn = PD_SORT[p.sortKey];
+  const dir = p.sortDir === 'asc' ? 1 : -1;
+  passing.sort((a, b2) => {
+    if (keyFn) {
+      const x = keyFn(a), y = keyFn(b2);
+      const c = typeof x === 'string' ? x.localeCompare(y) : x - y;
+      if (c) return c * dir;
+    }
+    return String(b2.registeredAt || '').localeCompare(String(a.registeredAt || ''));   // كاسر التعادل + الترتيب الافتراضي
+  });
+  const page = passing.slice(p.offset, p.offset + p.limit);
 
   // ── ٥) تفاصيل الصفحة بس: D1 (المنتجات/المندوب) + التحصيل + شوبيفاي ──
   const regDetail = new Map();   // rowId → extra
@@ -704,7 +765,7 @@ async function buildPendingDetails(env, p) {
     for (const row of (r.results || [])) regDetail.set(row.id, safeJSON(row.extra));
   }
 
-  const collDetail = new Map();  // order_id → آخر صف تحصيل بعد وقت التسجيل
+  const collDetail = new Map();  // order_id → آخر صف تحصيل
   const needColl = page.filter(i => i.status === 'collected' || i.status === 'stale');
   for (const ch of chunkArray(needColl.map(i => i.orderId))) {
     const r = await env.DB.prepare(`
@@ -740,7 +801,7 @@ async function buildPendingDetails(env, p) {
   });
 
   return {
-    rows, total: filtered.length, counts,
+    rows, total: passing.length, facets,
     cap: PENDING_DETAILS_CAP, truncated, orphansTruncated, kvComplete: kv.complete,
     shopify,
   };
@@ -935,14 +996,20 @@ export default {
       if (action === 'pending_details') {
         assertEnv(env);   // DB + PRE_REG_KV بس — شوبيفاي بيتفحص جوّه وبيتحمّل فشله
         const csv = (k) => (url.searchParams.get(k) || '').split(',').map(s => s.trim()).filter(Boolean);
+        const num  = (k) => { const v = url.searchParams.get(k); return v === null || v === '' ? NaN : Number(v); };
+        const hm   = (k) => { const v = url.searchParams.get(k) || ''; return /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null; };
+        const day  = (k) => { const v = url.searchParams.get(k) || ''; return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; };
         const result = await buildPendingDetails(env, {
-          statuses:  csv('statuses').filter(s => PD_STATUSES.includes(s)),
-          employees: csv('employees'),
-          search:    url.searchParams.get('search')   || null,
-          dateFrom:  url.searchParams.get('dateFrom') || null,
-          dateTo:    url.searchParams.get('dateTo')   || null,
-          limit:     Math.min(Math.max(parseInt(url.searchParams.get('limit')  || '100') || 100, 1), 100),
-          offset:    Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0),
+          statuses:   csv('statuses').filter(s => PD_STATUSES.includes(s)),
+          employees:  csv('employees'),
+          orders:     csv('orders').map(t => t.replace(/\D/g, '')).filter(Boolean),   // أرقام بس — المسافة/الفاصلة = أوردر تاني (OR)
+          amountFrom: num('amountFrom'), amountTo: num('amountTo'),
+          dateFrom:   day('dateFrom'),   dateTo:   day('dateTo'),
+          timeFrom:   hm('timeFrom'),    timeTo:   hm('timeTo'),
+          sortKey:    url.searchParams.get('sortKey') || null,   // whitelist جوّه buildPendingDetails (PD_SORT)
+          sortDir:    url.searchParams.get('sortDir') || 'desc',
+          limit:      Math.min(Math.max(parseInt(url.searchParams.get('limit')  || '100') || 100, 1), 100),
+          offset:     Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0),
         });
         return json({ ok: true, ...result }, 200, request);
       }

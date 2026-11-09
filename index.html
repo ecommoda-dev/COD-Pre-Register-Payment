@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<!-- skills: ecommoda-html-builder v6.0.0 · ecommoda-constants v1.4.3 · ecommoda-worker-builder v2.0.0 — 01-09-2026 -->
+<!-- skills: ecommoda-html-builder v8.7.0 · ecommoda-constants v3.1.0 · ecommoda-worker-builder v3.7.1 — 09-11-2026 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Pre-Register Payment — COD</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -56,6 +56,15 @@
        من templates/24_data-table-section.html تشتغل زي ما هي */
     --surface: #ffffff;
     --surface-2: #f9fafb;
+    /* توكنز القسم الموحّد (design-system.md · Standards #35/#49) */
+    --text-mid: #374151;
+    --surface-hover: #f0f4f8;
+    --accent-border: #bfdbfe;
+    --on-accent: #ffffff;
+    --neutral-dark: #1a1d27;
+    --red-dark: #b91c1c;
+    --th-size: 12px; --th-weight: 700; --th-color: var(--text-mid);
+    --td-size: 12.5px; --td-weight: 600;
     --radius: 12px;
     --radius-sm: 8px;
     --green-border: #bbf7d0;
@@ -435,8 +444,10 @@
   .act-btn.export:hover{background:var(--green);color:#fff;}
   .act-btn:disabled{opacity:.5;cursor:not-allowed;}
 
-  .tbl-body-wrap{max-height:2400px;overflow:hidden;transition:max-height .3s ease;border-radius:0 0 var(--radius) var(--radius);}
-  .tbl-body-wrap.collapsed{max-height:0;}
+  .tbl-body-wrap{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr;transition:grid-template-rows .3s ease;border-radius:0 0 var(--radius) var(--radius);}
+  .tbl-body-wrap>*{min-height:0;min-width:0;}
+  .tbl-body-wrap.collapsed{grid-template-rows:0fr;overflow:hidden;}
+  .tbl-body-wrap.collapsed>*{overflow:hidden;}
   .tbl-scroll{overflow-x:auto;border-radius:0 0 var(--radius) var(--radius);}
 
   .data-table{width:100%;border-collapse:collapse;font-size:12.5px;}
@@ -479,18 +490,159 @@
   .res-badge.bad  {background:var(--red-light);color:var(--red);border:1px solid var(--red-border);}
   .res-badge.info {background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border);}
 
-  /* ── تاب «المعلّقة والمحصّلة» — chips فلتر الحالة (multi-select، بلا اختيار = الكل) ── */
-  .pd-status-row{display:flex;gap:8px;flex-wrap:wrap;}
-  .pd-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-strong);
-    background:var(--surface);font-family:var(--font);font-size:12px;font-weight:700;color:var(--text-secondary);cursor:pointer;
-    transition:background .15s,border-color .15s,color .15s;}
-  .pd-chip:hover{border-color:var(--accent);color:var(--accent);}
-  .pd-chip.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
-  .pd-chip .pd-n{font-family:var(--mono);font-size:11px;opacity:.8;}
-  .pd-sel{height:34px;min-width:170px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:0 8px;
-    font-family:var(--font);font-size:13px;background:var(--surface);color:var(--text-primary);}
-  .pd-sub{display:block;font-size:11px;color:var(--text-muted);font-weight:600;}
-  .pd-cust{white-space:nowrap;}
+  /* ══ تاب «المعلّقة والمحصّلة» — CSS القسم الموحّد (data-table-standard.md) مقيَّد بـ .tbx
+     عشان ما يلمسش تاب السجل (اللي لسه على الشكل القديم). مولَّد من templates/24_data-table-section.html ══ */
+.tbx .inp{width:100%;height:36px;border:1.5px solid var(--border-strong);border-radius:var(--radius-sm);padding:0 11px;font-size:13px;font-weight:600;color:var(--text-primary);background:var(--surface);outline:none;transition:border-color .15s,background .15s}
+.tbx .inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.tbx .inp.has-value{border-color:var(--accent);background:var(--accent-light)}
+.tbx .search-wrap{position:relative}
+.tbx .search-wrap .inp{padding-left:34px}
+.tbx .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-muted);pointer-events:none}
+.pop.tbx{position:fixed;z-index:200;width:268px;max-width:calc(100vw - 16px);background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.16);max-height:72vh;display:flex;flex-direction:column}
+.pop.tbx.wide{width:340px}
+.tbx .pop-hd{flex-shrink:0;padding:9px 12px;font-weight:800;font-size:12.5px;border-bottom:1px solid var(--border);background:var(--surface-2);border-radius:var(--radius-sm) var(--radius-sm) 0 0}
+.tbx .pop-hd.has-act{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-block:6px}
+.tbx .pop-body{padding:10px 12px;display:flex;flex-direction:column;gap:9px;overflow:auto;min-height:0}
+.tbx .pop-srch{padding:8px 10px 0}
+.tbx .ms-ftr-top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border)}
+.tbx .lnk{border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:var(--accent)}
+.tbx .lnk:hover{text-decoration:underline}
+.tbx .ms-list{overflow:auto;padding:4px}
+.tbx .ms-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600;user-select:none}
+.tbx .ms-item:hover{background:var(--surface-hover)}
+.tbx .ms-item .cb{width:16px;height:16px;border:1.5px solid var(--border-strong);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:var(--on-accent);flex-shrink:0}
+.tbx .ms-item.on .cb{background:var(--accent);border-color:var(--accent)}
+.tbx .ms-item.on .cb::after{content:'✓'}
+.tbx .ms-cnt{margin-inline-start:auto;font-family:var(--font-mono);font-size:11px;font-weight:700;color:var(--text-mid);background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:0 7px}
+.tbx .rng{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tbx .rng>div{min-width:0}
+.tbx .rng label,.tbx .pop-body label{font-size:11.5px;font-weight:700;color:var(--text-mid);display:block;margin-bottom:3px}
+/* حقول التاريخ/الشهر/الوقت: الضغط في أي مكان جوه الصندوق يفتح اللوحة — مؤشر الكاليندر الأصلي ممدود على الصندوق كله (شفاف) والأيقونة مرسومة فوقه */
+.tbx .dt-wrap{position:relative;min-width:0}
+.tbx .dt-wrap .inp{position:relative;direction:ltr;min-width:0;padding:0 34px 0 10px;font-size:12.5px;cursor:pointer}
+.tbx .dt-wrap .inp::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}
+.tbx .dt-ico{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-mid);pointer-events:none}
+.tbx .sec{display:flex;flex-direction:column;gap:5px}
+.tbx .pop-body>.sec+.sec{border-top:1px solid var(--border);padding-top:8px}
+.tbx .sec-h{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:22px}
+.tbx .sec-t{font-size:11px;font-weight:800;color:var(--text-mid)}
+.tbx .pills{display:grid;gap:5px}
+.tbx .pills.c2{grid-template-columns:repeat(2,1fr)}
+.tbx .pills.c3{grid-template-columns:repeat(3,1fr)}
+.tbx .pills.c4{grid-template-columns:repeat(4,1fr)}
+.tbx .pills.c6{grid-template-columns:repeat(6,1fr)}
+.tbx .pills button{min-height:28px;min-width:0;padding:2px;border:1px solid var(--border);background:var(--surface);border-radius:6px;font-size:12px;line-height:1.25;font-weight:600;cursor:pointer;color:var(--text-primary);transition:background .12s,border-color .12s}
+.tbx .pills.c4 button{font-size:11.5px}
+.tbx .pills button:hover{background:var(--surface-hover);border-color:var(--border-strong)}
+.tbx .pills button.on{background:var(--accent-light);border-color:var(--accent-border);color:var(--accent-dark);font-weight:800}
+.tbx .yr-step{display:flex;align-items:center;justify-content:center;gap:4px}
+.tbx .yr-step button{width:24px;height:22px;border:1px solid var(--border);background:var(--surface);border-radius:5px;cursor:pointer;color:var(--text-mid);font-size:14px;line-height:1;font-weight:800}
+.tbx .yr-step button:hover:not(:disabled){background:var(--surface-hover);border-color:var(--border-strong)}
+.tbx .yr-step button:disabled{opacity:.35;cursor:not-allowed}
+.tbx .yr-step .yr-lbl{width:auto;min-width:68px;padding:0 10px;font-family:var(--font-mono);font-size:12.5px;font-weight:800;color:var(--text-primary)}
+.tbx .yr-step .yr-lbl.on{background:var(--accent-light);border-color:var(--accent-border);color:var(--accent-dark)}
+.tbx .tok-row{display:flex;flex-wrap:wrap;gap:6px}
+.tbx .tok-row:empty{display:none}
+.tbx .pop-hd.has-act .clear-btn{height:26px;padding:2px 9px}
+.tbx .hint{font-size:11.5px;font-weight:600;color:var(--text-mid);line-height:1.8}
+.pop.tbx .clear-btn{height:30px;padding:4px 10px;font-size:12px}
+.pop.tbx .pop-body>.clear-btn{align-self:flex-start}
+/* Chips — اسم الفلتر مرة واحدة في أول السطر */
+.tbx .chips-zone{display:flex;flex-direction:column;gap:6px}
+.tbx .chips-zone.pad{padding:10px 16px;border-top:1px solid var(--border)}
+.tbx .chips-zone:empty{display:none}
+.tbx .ms-chips-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.tbx .chips-label{font-size:11.5px;font-weight:700;color:var(--text-mid);white-space:nowrap}
+.tbx .ms-chip{display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);border:1px solid var(--accent-border);color:var(--accent-dark);border-radius:20px;padding:2px 4px 2px 10px;font-size:12px;font-weight:700}
+.tbx .ms-chip button{border:none;background:var(--accent-border);color:var(--accent-dark);width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:10px;line-height:1}
+.tbx .ms-chip button:hover{background:var(--accent);color:var(--on-accent)}
+/* صف النتائج */
+.tbx .tbl-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--surface-2);cursor:pointer;user-select:none;flex-wrap:wrap;border-radius:var(--radius) var(--radius) 0 0}
+.tbx .tbl-bar:hover{background:var(--surface-hover)}
+.tbx .tbl-bar-right,.tbx .tbl-bar-left{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tbx .tbl-toggle{font-size:13px;color:var(--text-muted);transition:transform .25s}
+.tbx .tbl-toggle.open{transform:rotate(180deg)}
+.tbx .results-wrap{display:flex;align-items:center;gap:8px}
+.tbx .results-label{font-size:14px;font-weight:800;white-space:nowrap}
+.tbx .results-count{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:34px;padding:0 10px;font-family:var(--font-mono);font-size:17px;font-weight:800;color:var(--purple);background:var(--purple-light);border:1.5px solid var(--purple-border);border-radius:var(--radius-sm)}
+/* تثبيت العناوين — سكرول داخلي */
+.tbx .tbl-scroll{max-height:68vh;overflow:auto}
+/* الجدول */
+.tbx .data-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:var(--td-size)}
+.tbx .data-table.auto{table-layout:auto}
+.tbx .data-table thead th{position:sticky;top:0;z-index:20;background:var(--surface-2);color:var(--th-color);font-weight:var(--th-weight);font-size:var(--th-size);letter-spacing:.3px;text-transform:uppercase;padding:10px 6px;text-align:center;white-space:normal;box-shadow:inset 0 -2px 0 var(--border-strong)}
+.tbx .data-table tbody td{text-align:center;padding:9px 6px;border-bottom:1px solid var(--border);white-space:normal;overflow-wrap:anywhere;font-size:var(--td-size);font-weight:var(--td-weight)}
+.tbx .data-table thead th,.tbx .data-table tbody td{border-inline-start:1px solid var(--border)}
+.tbx .data-table thead th:first-child,.tbx .data-table tbody td:first-child{border-inline-start:none}
+.tbx .data-table tbody tr:hover{background:var(--surface-2)}
+.tbx .col-num{font-family:var(--font-mono);direction:ltr;white-space:nowrap}
+.tbx .th-in{display:inline-flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;max-width:100%}
+.tbx .th-label{cursor:pointer;user-select:none;padding:2px 4px;border-radius:5px;transition:background .12s,color .12s}
+.tbx .th-label:hover{background:var(--accent-light);color:var(--accent-dark)}
+.tbx th.sorted .th-label{background:var(--accent-light);color:var(--accent-dark)}
+.tbx .sort-icon{display:inline-block;font-size:10px;color:var(--accent);font-weight:900}
+.tbx .sort-icon.active{margin-inline-start:4px}
+.tbx .th-flt{min-width:22px;height:22px;padding:0 3px;border:1px solid transparent;border-radius:6px;background:transparent;color:var(--text-muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:2px;font-size:10px;font-weight:800}
+.tbx .th-flt svg{width:14px;height:14px}
+.tbx .th-flt:hover{background:var(--accent-light);color:var(--accent)}
+.tbx th.flt-on .th-flt{background:var(--accent-light);border-color:var(--accent-border);color:var(--accent)}
+.tbx .sub{font-size:11px;font-weight:600;color:var(--text-mid);margin-top:3px;line-height:1.6}
+.tip.tbx{position:fixed;z-index:210;max-width:300px;background:var(--neutral-dark);color:var(--on-accent);font-size:12px;font-weight:600;line-height:1.7;padding:6px 10px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.2);pointer-events:none;word-break:break-word}
+/* إضافات: باهت للتبادل · اقتراحات · تصاميم الوقت */
+.tbx .sec[data-sec]{transition:opacity .15s}
+.tbx .sec.dim{opacity:.4}
+.tbx .sec.dim:hover{opacity:.8}
+.tbx .sugg{border:1px solid var(--border);border-radius:var(--radius-sm);max-height:236px;overflow:auto;padding:3px}
+.tbx .sugg:empty{display:none}
+.tbx .ms-item.sg.act{background:var(--accent-light)}
+.tbx .sg-s{font-size:11px;font-weight:600;color:var(--text-mid)}
+.tbx .sg-more,.tbx .sg-empty{padding:6px 8px;font-size:11.5px;font-weight:600;color:var(--text-mid)}
+.tbx .sl-lbl{font-size:12.5px;font-weight:600;text-align:center}
+.tbx .sl-lbl b{font-weight:800;color:var(--accent-dark)}
+.tbx .dual{position:relative;height:26px;direction:rtl;margin-top:4px}
+.tbx .dual-track{position:absolute;left:0;right:0;top:11px;height:4px;border-radius:4px;background:var(--border-strong)}
+.tbx .dual-fill{position:absolute;top:0;bottom:0;background:var(--accent);border-radius:4px}
+.tbx .dual input[type=range]{position:absolute;left:0;top:0;width:100%;height:26px;margin:0;padding:0;background:transparent;pointer-events:none;-webkit-appearance:none;appearance:none;border:none;outline:none}
+.tbx .dual input[type=range]::-webkit-slider-runnable-track{height:26px;background:transparent}
+.tbx .dual input[type=range]::-moz-range-track{height:26px;background:transparent}
+.tbx .dual input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;pointer-events:auto;width:18px;height:18px;margin-top:4px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:grab}
+.tbx .dual input[type=range]::-moz-range-thumb{pointer-events:auto;width:14px;height:14px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);box-shadow:0 1px 3px rgba(0,0,0,.25);cursor:grab}
+.tbx .dual input[type=range]:focus-visible::-webkit-slider-thumb{outline:2px solid var(--accent);outline-offset:2px}
+/* حقل وقت مخصص + قايمة اختيار ساعة/دقيقة (بدل لوحة المتصفح الدايرية) */
+.tbx .tf-btn{display:flex;align-items:center;justify-content:flex-start;text-align:left;cursor:pointer;direction:ltr;font-family:var(--font-mono)}
+.tbx .tf-btn.open{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.tbx .tf-v.ph{color:var(--text-muted);font-weight:600}
+.tbx .tf-warn{font-size:11.5px;font-weight:700;color:var(--red-dark)}
+.tbx .tf-warn:empty{display:none}
+.tp.tbx{position:fixed;z-index:205;width:180px;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.2);direction:ltr}
+.tbx .tp-cols{display:flex;align-items:flex-start;padding:8px 8px 0}
+.tbx .tp-col{flex:1;min-width:0}
+.tbx .tp-sep{align-self:center;font-weight:800;font-size:15px;color:var(--text-mid);padding:0 3px;margin-top:24px}
+.tbx .tp-hd{display:flex;align-items:center;justify-content:center;gap:5px;font-size:11.5px;font-weight:800;color:var(--text-mid);padding-bottom:5px;direction:rtl}
+.tbx .tp-hd small{font-family:var(--font-mono);font-size:10px;font-weight:700;color:var(--accent-dark);background:var(--accent-light);border:1px solid var(--accent-border);border-radius:8px;padding:0 5px}
+.tbx .tp-list{position:relative;height:168px;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--border);border-radius:6px;padding:2px}
+.tbx .tp-it{display:block;width:100%;height:28px;border:none;background:none;border-radius:5px;font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--text-primary);cursor:pointer}
+.tbx .tp-it:hover{background:var(--surface-hover)}
+.tbx .tp-it.on{background:var(--accent);color:var(--on-accent)}
+.tbx .tp-ft{display:flex;justify-content:space-between;align-items:center;padding:6px 8px 8px;direction:rtl}
+.tbx .tp-done{border:1px solid var(--accent-border);background:var(--accent-light);color:var(--accent-dark);border-radius:6px;padding:3px 14px;font-size:12px;font-weight:800;cursor:pointer}
+.tbx .tp-done:hover{background:var(--accent-border)}
+/* عرض الأعمدة بالسحب */
+.tbx .data-table.measuring th,.tbx .data-table.measuring td{white-space:nowrap}
+.tbx .data-table.measuring .th-in{flex-wrap:nowrap;max-width:none}
+.tbx .col-rz{position:absolute;top:0;bottom:0;inset-inline-end:0;width:10px;cursor:col-resize;touch-action:none;z-index:3}
+.tbx .col-rz::after{content:'';position:absolute;top:24%;bottom:24%;inset-inline-end:3px;width:2px;border-radius:2px;background:var(--border-strong);transition:background .12s,top .12s,bottom .12s}
+.tbx .col-rz:hover::after,.tbx .col-rz.active::after{background:var(--accent);top:8%;bottom:8%}
+body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:none!important}
+.tbx col.hl{background:var(--accent-light)}
+.w-badge.tbx{position:fixed;z-index:220;bottom:calc(14px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--neutral-dark);color:var(--on-accent);font-size:12.5px;font-weight:700;padding:6px 14px;border-radius:20px;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+
+  /* تاب «المعلّقة والمحصّلة» — ضبط على القاعدة العامة + حالة التحميل (v2.5.0) */
+  .tbx .search-wrap{max-width:none;min-width:0;flex:none}
+  .tbx .upd{font-size:12px;font-weight:600;color:var(--text-mid)}
+  .tbx .tbl-scroll.is-loading{opacity:.55;transition:opacity .15s}
+  .tbx .data-table tbody td.items-cell{max-width:none;min-width:0}
+  .tbx .data-table tbody td .items-chips{justify-content:center}
 
   /* ── رقم الأوردر = هايبر لينك لشوبيفاي ── */
   .order-link { color: var(--purple); font-family: var(--mono); font-weight: 700; text-decoration: none; border-bottom: 1px dashed var(--purple-border); }
@@ -980,7 +1132,7 @@
       </div>
     </div>
 
-    <div class="tbl-body-wrap" id="tblBodyWrap">
+    <div class="tbl-body-wrap" id="tblBodyWrap"><div>
       <div id="logExportWarn" class="export-warn" style="display:none;margin:12px 16px 0;"></div>
       <div class="tbl-scroll">
         <table class="data-table">
@@ -1006,7 +1158,7 @@
         <span class="page-info" id="pageInfo"></span>
         <button class="page-btn" id="btnNextPage" onclick="goPage(1)">التالي ←</button>
       </div>
-    </div>
+    </div></div>
 
   </div>
   <!-- /§LOG -->
@@ -1019,85 +1171,44 @@
 
   <!-- ══════════════════════════════════════════════════════
        §PENDING — كل الأوردرات المسجّلة مسبقًا: معلّق / اتحصّل / مفتاح عالق / اتمسح.
-       المصدر: KV (معلّق دلوقتي) + D1 (التسجيل + التحصيل) + شوبيفاي (حالة حية، نداء واحد).
-       الفلترة والعدّ والصفحات server-side (نفس منطق السجل) — بدون تصدير.
+       القسم الموحّد بمعيار data-table-standard.md: كارت واحد · فلاتر في رأس العمود ·
+       chips · عناوين ثابتة · عرض أعمدة بالسحب. الفلترة والترتيب والصفحات server-side.
+       المصدر: KV (معلّق دلوقتي) + D1 (التسجيل + التحصيل) + شوبيفاي (نداء مجمّع واحد). بدون تصدير.
        ⛔ بيانات العميل للعرض فقط — مش بتتخزّن ولا بتتصدّر.
        ══════════════════════════════════════════════════════ -->
-  <div class="unified-section">
-
-    <div class="flt-header" style="cursor:default;">
-      <div class="flt-header-right"><span style="font-weight:700;">⏳ المعلّقة والمحصّلة</span></div>
-      <button class="clear-btn inactive" id="pdClearBtn" onclick="pdClearFilters()">✕ مسح كل الفلاتر</button>
-    </div>
-
-    <div class="flt-body">
-      <div class="pd-status-row" id="pdStatusRow"></div>
-
-      <div class="flt-row">
-        <div class="flt-g" style="min-width:240px;">
-          <span class="flt-label">بحث برقم الأوردر</span>
-          <div class="search-wrap">
-            <input type="text" class="search-input" id="pdSearch" oninput="pdOnSearch(this)">
-            <span class="search-icon">🔍</span>
-          </div>
-        </div>
-        <div class="flt-g">
-          <span class="flt-label">من تاريخ التسجيل</span>
-          <div class="range-date-wrap"><input type="date" id="pdDateFrom" onclick="this.showPicker&&this.showPicker();" onchange="pdOnFilter()"></div>
-        </div>
-        <div class="flt-g">
-          <span class="flt-label">إلى تاريخ</span>
-          <div class="range-date-wrap"><input type="date" id="pdDateTo" onclick="this.showPicker&&this.showPicker();" onchange="pdOnFilter()"></div>
-        </div>
-        <div class="flt-g">
-          <span class="flt-label">الموظف</span>
-          <select class="pd-sel" id="pdEmp" onchange="pdOnFilter()"><option value="">كل الموظفين</option></select>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-divider"></div>
-
-    <div class="tbl-bar" style="cursor:default;">
+  <div class="unified-section tbx" id="pdSection">
+    <div class="tbl-bar" id="pdBar">
       <div class="tbl-bar-right">
+        <span class="tbl-toggle open" id="pdTog">▲</span>
         <div class="results-wrap">
           <span class="results-label">النتائج:</span>
           <span class="results-count" id="pdCount">—</span>
         </div>
+        <span class="upd" id="pdUpd"></span>
       </div>
       <div class="tbl-bar-left">
-        <button class="act-btn refresh" onclick="pdRefresh()">↺ تحديث</button>
+        <button class="act-btn refresh" type="button" data-pdrefresh>↺ تحديث</button>
+        <button class="clear-btn inactive" type="button" data-clearall>✕ مسح كل الفلاتر</button>
       </div>
     </div>
-
-    <div class="tbl-body-wrap">
+    <div class="chips-zone pad" id="pdChips"></div>
+    <div class="tbl-body-wrap" id="pdWrap"><div>
       <div id="pdWarn" class="export-warn" style="display:none;margin:12px 16px 0;"></div>
-      <div class="tbl-scroll">
-        <table class="data-table">
-          <thead><tr>
-            <th>التسجيل</th>
-            <th>الموظف</th>
-            <th>رقم الأوردر</th>
-            <th>المبلغ (EGP)</th>
-            <th>المندوب</th>
-            <th>المنتجات</th>
-            <th>الحالة</th>
-            <th>التحصيل</th>
-            <th>العميل</th>
-            <th>شوبيفاي الآن</th>
-          </tr></thead>
+      <div class="tbl-scroll" id="pdScroll">
+        <table class="data-table auto measuring" id="pdTbl">
+          <colgroup id="pdCg"></colgroup>
+          <thead id="pdHead"></thead>
           <tbody id="pdBody">
             <tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>
           </tbody>
         </table>
       </div>
       <div class="pagination-row" id="pdPager" style="display:none;">
-        <button class="page-btn" id="pdPrev" onclick="pdGoPage(-1)">→ السابق</button>
+        <button class="page-btn" id="pdPrev" type="button" data-pdpage="-1">→ السابق</button>
         <span class="page-info" id="pdPageInfo"></span>
-        <button class="page-btn" id="pdNext" onclick="pdGoPage(1)">التالي ←</button>
+        <button class="page-btn" id="pdNext" type="button" data-pdpage="1">التالي ←</button>
       </div>
-    </div>
-
+    </div></div>
   </div>
   </div>
   <!-- /panelPending -->
@@ -1166,7 +1277,7 @@
             <tr><td><code>preRegister</code></td><td>تسجيل الدفع + KV + ميتافيلد + D1</td></tr>
             <tr><td><code>checkPending / clearPending / listPending</code></td><td>API داخلي لـ cod-payment-center-worker</td></tr>
             <tr><td><code>get_logs / get_logs_count</code></td><td>سجل التسجيلات — فلترة (<code>employees</code> · <code>search</code> · <code>dateFrom/dateTo</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلهم server-side</td></tr>
-            <tr><td><code>pending_details</code></td><td>تاب «المعلّقة والمحصّلة» — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية بنداء واحد. قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>search</code> · <code>dateFrom/dateTo</code>) وصفحات server-side</td></tr>
+            <tr><td><code>pending_details</code></td><td>تاب «المعلّقة والمحصّلة» — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية بنداء واحد. قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> · <code>timeFrom/To</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلها server-side</td></tr>
             <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
             <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
             <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
@@ -1191,7 +1302,7 @@
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
             <li><code>§TABS-JS</code> — <code>switchMainTab</code> (lazy load للسجل) · <code>onPageScroll</code> بعتبتين (الباند مقيس بـ <code>measureSticky()</code>) + rAF · chip التاب الحالي</li>
             <li><code>§LOG-JS</code> — جدول السجل بالمعيار الموحّد: <code>msState</code> (فلتر الموظف) · <code>logParams()</code> (مصدر واحد للفلاتر) · <code>fetchLog()</code> (صفحة + عدّ بالتوازي) · <code>toggleSort</code> · <code>exportLogXLSX</code></li>
-            <li><code>§PENDING-JS</code> — تاب «المعلّقة والمحصّلة»: <code>pdParams()</code> (مصدر واحد للفلاتر) · <code>pdFetch()</code> · chips الحالة multi-select · lazy عند فتح التاب</li>
+            <li><code>§PENDING-JS</code> — تاب «المعلّقة والمحصّلة» (الكائن <code>PD</code>): <code>params()</code> (مصدر واحد للفلاتر) · <code>fetchNow()</code> (آخر طلب بس هو اللي بيتعرض) · قوايم رأس العمود <code>openPop()</code>/<code>buildPop()</code> · <code>toggleSort()</code> · محرّك عرض الأعمدة <code>effective()</code>/<code>applyW()</code> · lazy عند فتح التاب</li>
             <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
             <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
           </ul>
@@ -1212,7 +1323,7 @@
             <li><b>مفاتيح بوسطة في <code>PRE_REG_KV</code> مش بقايا — دي backlog. ممنوع حذفها</b> (ecommoda-constants §11 بند 14).</li>
             <li>ترتيب <code>preRegister</code> مقصود: الفلوس الأول، وبعدها KV والميتافيلد وD1 — التلاتة دول فشلهم بيدّي <b>⚠ تم جزئيًا</b> مش فشل كامل.</li>
             <li>بيانات العميل (الاسم/التليفون): الواجهة جاهزة لعرضها لو الـ Worker بعتها، لكن <code>preview</code> <b>مش بيرجّعها حاليًا</b> — الصندوق بيفضل مخفي. إضافتها محتاجة صلاحية <code>read_customers</code> على تطبيق شوبيفاي، وقرار صريح لأنها بيانات شخصية.</li>
-            <li>الوقت كله بتوقيت القاهرة (UTC+3) عبر <code>toCairo()</code> — مش توقيت جهاز الموظف.</li>
+            <li>الوقت كله بتوقيت القاهرة عبر <code>cairoParts()</code> (<code>Intl</code> · <code>Africa/Cairo</code> — محسوب مش إزاحة ثابتة) — مش توقيت جهاز الموظف.</li>
             <li><b>الفلترة والعدّ والترتيب في السجل كلهم server-side</b> — السجل مقسّم صفحات، والفلترة في المتصفح كانت هتخلي «النتائج» تعدّ الصفحة مش القاعدة.</li>
             <li>فلتر <code>من/إلى تاريخ</code> بيتقارن بـ <code>timestamp</code> المخزّن (UTC) والعرض بتوقيت القاهرة (+3) — عملية بعد ٩ مساءً ممكن تقع في يوم UTC اللي بعده. مقبول لفلتر بالأيام.</li>
             <li>الأعمدة المشتقّة من <code>extra</code> (المندوب · الشحن · المنتجات) <b>مش قابلة للترتيب</b> — مش أعمدة في جدول D1، عشان كده مالهاش سهم ترتيب.</li>
@@ -1238,7 +1349,21 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.4.0</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.5.0</span>
+          <span class="cl-ver-date">09-11-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>جدول «المعلّقة والمحصّلة» اتحوّل لمعيار الجداول الحالي: <b>الفلاتر في رأس كل عمود</b> (أيقونة قمع ← قايمة عائمة) بدل قسم الفلاتر فوق الجدول — الحالة والموظف (اختيار متعدد بعدّاد لكل قيمة) · رقم الأوردر (توكنز بـ Enter) · المبلغ (نطاق) · التسجيل (تاريخ بأقسام + وقت بمنزلق)، و<b>chips</b> لكل فلتر تحت صف النتائج، و«مسح الاختيار» في كل قايمة</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span><b>ترتيب</b> بضغطة على اسم العمود (تصاعدي ← تنازلي ← بلا ترتيب) — من السيرفر، وبيرجّع لصفحة ١ · <b>عناوين ثابتة</b> جوه سكرول داخلي · <b>عرض الأعمدة بالسحب</b> (دبل كليك = ضبط تلقائي) ومحفوظ</span></li>
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span><b>التوقيت:</b> الوقت المعروض كان بيزيد ساعة عن الحقيقة من 29-10-2026 (نهاية التوقيت الصيفي) لأنه كان بيضيف +3 ثابتة — بقى محسوب بـ <code>Intl</code> لتوقيت القاهرة في كل التابات</span></li>
+          <li class="cl-item"><span class="cl-tag fix">إصلاح</span><span><b>قص صفوف صامت:</b> سقف <code>max-height:2400px</code> على الجدول كان بيخفي أي صف بعد حوالي ٣٠ صف من غير رسالة (ينطبق على سجل العمليات كمان) — اتبدّل بـ <code>grid-template-rows</code> (Standards #46)</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>قايمة الفلتر بتتحط تحت الهيدر الثابت ومابتتغطّاش بيه، وبتسكرول جواها لو الشاشة قصيرة</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.4.0</span>
           <span class="cl-ver-date">09-11-2026</span>
         </div>
         <ul class="cl-items">
@@ -1375,10 +1500,10 @@
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.4.0';
+  const TOOL_VERSION = '2.5.0';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
-  const MIN_WORKER_VERSION = '2.5.0';   // النسخة اللي فيها pending_details (تاب المعلّقة والمحصّلة)
+  const MIN_WORKER_VERSION = '2.6.0';   // النسخة اللي فيها pending_details بفلاتر رأس العمود والترتيب server-side
 
   // الرابط مش سر — ثابت هنا بدل حقل إعدادات (html-builder Standards #28)
   const WORKER_URL = 'https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev';
@@ -1822,7 +1947,7 @@
     });
     // lazy load — السجل وتاب المعلّقة ما بيتسحبوش غير لما الموظف يفتح التاب فعلاً
     if (tab === 'log' && !logLoadedOnce && currentEmployee) refreshLog();
-    if (tab === 'pending' && !pdLoadedOnce && currentEmployee) pdRefresh();
+    if (tab === 'pending') PD.onShow(); else PD.closePop();
     if (tab === 'main') setTimeout(() => $('orderInput')?.focus(), 60);
     updateTabChip();
     closeTabChipMenu();
@@ -1922,22 +2047,30 @@
   let logRows = [], logTotalCount = 0, logCurrentPage = 1;
   let logLoadedOnce = false, logLoading = false;
 
-  // ── التاريخ والوقت: توقيت القاهرة دايمًا (html-builder قاعدة 10) ──
-  function toCairo(iso) { return new Date(new Date(iso).getTime() + 3 * 60 * 60 * 1000); }
+  // ── التاريخ والوقت: توقيت القاهرة دايمًا — **محسوب** بـ Intl مش إزاحة ثابتة ──
+  // (ecommoda-constants §13 · html-builder Step 7). الإزاحة الثابتة +3 كانت غلط بساعة
+  // من 29-10-2026 (نهاية التوقيت الصيفي في مصر) وبتغلّط كل وقت معروض وكل فلتر تاريخ.
+  const CAIRO_TZ = 'Africa/Cairo';
+  const _cairoFmt = new Intl.DateTimeFormat('en-CA', { timeZone: CAIRO_TZ, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  function cairoParts(d) {
+    const o = {};
+    for (const p of _cairoFmt.formatToParts(d)) if (p.type !== 'literal') o[p.type] = p.value;
+    if (o.hour === '24') o.hour = '00';        // حارس: بعض المحركات بترجّع 24
+    return o;
+  }
+  function cairoDateStr(d = new Date()) { const p = cairoParts(d); return `${p.year}-${p.month}-${p.day}`; }
   const _pad = n => String(n).padStart(2, '0');
+  function _ampm(p) { let h = +p.hour; const s = h >= 12 ? 'مساءً' : 'صباحاً'; h = h % 12 || 12; return `${_pad(h)}:${p.minute} ${s}`; }
 
   function formatDate(iso) {
     if (!iso) return '—';
-    const d = toCairo(iso);
-    return `📅 ${_pad(d.getUTCDate())}/${_pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+    const p = cairoParts(new Date(iso));
+    return `📅 ${p.day}/${p.month}/${p.year}`;
   }
   function formatTimeOnly(iso) {
     if (!iso) return '—';
-    const d = toCairo(iso);
-    let h = d.getUTCHours();
-    const ampm = h >= 12 ? 'مساءً' : 'صباحاً';
-    h = h % 12 || 12;
-    return `🕐 ${_pad(h)}:${_pad(d.getUTCMinutes())} ${ampm}`;
+    return `🕐 ${_ampm(cairoParts(new Date(iso)))}`;
   }
   function formatDateTime(iso) {
     if (!iso) return '—';
@@ -1946,9 +2079,8 @@
   // عمود التاريخ في XLSX — نفس التوقيت بدون إيموجي
   function formatDateForExport(iso) {
     if (!iso) return '';
-    const d = toCairo(iso);
-    return `${_pad(d.getUTCDate())}/${_pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} `
-         + `${_pad(d.getUTCHours())}:${_pad(d.getUTCMinutes())}`;
+    const p = cairoParts(new Date(iso));
+    return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
   }
   function ymd(d) {
     return `${d.getFullYear()}-${_pad(d.getMonth() + 1)}-${_pad(d.getDate())}`;
@@ -2449,7 +2581,6 @@
       // نفس القايمة بتغذّي فلتر الموظف في السجل — مفيش أسماء hardcoded
       msState.emp.items = employees.map(e => ({ value: e.username, label: e.display_name }));
       msRenderList('emp');
-      pdFillEmployees(employees);
       sel.disabled = false;
       status.className = employees.length ? 'login-status info' : 'login-status warn';
       status.textContent = employees.length ? 'اختر الموظف للمتابعة.' : 'لا يوجد موظفون نشطون.';
@@ -2646,7 +2777,7 @@
     $('orderInput').value = '';
     $('activeUserBtn').textContent = '👤 —';
     logRows = []; logTotalCount = 0; logCurrentPage = 1; logLoadedOnce = false;
-    pdReset();
+    PD.reset();
     switchMainTab('main');
     clearAllFilters();
     $('tblBody').innerHTML = '<tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض السجل</td></tr>';
@@ -2678,12 +2809,28 @@
   }
 
   // ══════════════════════════════════════════════════════════════
-  // §PENDING-JS — تاب «المعلّقة والمحصّلة» (v2.4.0)
-  // action=pending_details: KV (معلّق دلوقتي) + D1 (التسجيل والتحصيل) + شوبيفاي الحية.
-  // الفلترة والعدّ والصفحات server-side، وفلتر الحالة multi-select (بلا اختيار = الكل).
+  // §PENDING-JS — تاب «المعلّقة والمحصّلة» (UI v2.5.0)
+  // القسم الموحّد بمعيار الجداول الحالي (data-table-standard.md):
+  //   فلاتر في رأس العمود (قايمة عائمة position:fixed على body) · ترتيب بضغطة على
+  //   اسم العمود · chips تحت صف النتائج · عناوين ثابتة · عرض الأعمدة بالسحب.
+  // الفلترة والعدّ والترتيب والصفحات **server-side** (action=pending_details) —
+  // فالقايمة اللي بتتعرض هي نتيجة السيرفر، مش فلترة في المتصفح.
   // ⛔ اسم العميل وتليفونه بيتعرضوا بس — مفيش تخزين ولا تصدير (CLAUDE.md).
+  //
+  // ⚠️ استثناءات واعية من المعيار (السبب: الجدول مقسّم صفحات server-side):
+  //   • فلتر رقم الأوردر: توكنز بـ Enter (OR) من غير اقتراحات لايف — الاقتراحات
+  //     محتاجة نداء للسيرفر مع كل حرف.
+  //   • فلتر المبلغ: نطاق من-إلى بس — قايمة القيم مالهاش معنى لمبالغ متنوعة.
+  //   • المندوب والمنتجات والعميل وحالة شوبيفاي: بلا فلتر ولا ترتيب — مشتقّة من
+  //     extra JSON أو من شوبيفاي الحية، مش موجودة قبل تقسيم الصفحات.
   // ══════════════════════════════════════════════════════════════
-  const PD_PAGE_SIZE = 100;
+  const PD = (function () {
+  'use strict';
+  const Q = s => document.querySelector(s);
+  const pad2 = n => String(n).padStart(2, '0');
+  const PAGE = 100;
+  const LS_COLS = 'prereg_pending_col_widths_v1';
+
   const PD_STATUS = {
     pending:   { label: '🟡 معلّق للتحصيل',          cls: 'warn', hint: 'المفتاح لسه في KV' },
     collected: { label: '✅ اتحصّل',                 cls: 'ok',   hint: 'المفتاح اتمسح وفيه تحصيل مسجّل' },
@@ -2691,178 +2838,689 @@
     cleared:   { label: '❓ اتمسح بدون تحصيل مسجّل', cls: 'none', hint: 'المفتاح مش في KV ومفيش تحصيل في لوج أداة التحصيل' },
     kv_only:   { label: '🗂 مفتاح KV بدون سجل',      cls: 'info', hint: 'مفتاح في KV مالوش صف تسجيل في D1' },
   };
-  const PD_STATUS_ORDER = ['pending', 'collected', 'stale', 'cleared', 'kv_only'];
+  const STATUS_ORDER = ['pending', 'collected', 'stale', 'cleared', 'kv_only'];
   const FIN_AR = { PAID: 'مدفوع', PENDING: 'معلّق', PARTIALLY_PAID: 'مدفوع جزئيًا', AUTHORIZED: 'مفوَّض',
                    REFUNDED: 'مسترد', PARTIALLY_REFUNDED: 'مسترد جزئيًا', VOIDED: 'ملغى', EXPIRED: 'منتهي' };
 
-  let pdRows = [], pdTotal = 0, pdPage = 1, pdCounts = null;
-  let pdLoadedOnce = false, pdLoading = false;
-  const pdStatuses = new Set();
-  let pdSearchTerm = '', pdSearchTimer;
+  const FL = { reg: 'التسجيل', emp: 'الموظف', orderNo: 'رقم الأوردر', amount: 'المبلغ', status: 'الحالة' };
+  const MS_KEYS = ['emp', 'status'], NUM_KEYS = ['amount'], Q_KEYS = ['orderNo'], DATE_KEYS = ['reg'], TIME_KEYS = ['reg'];
+  const SEARCH_MIN = 10;   // مربع البحث في قوايم القيم بيظهر من 10 قيم فأكتر
+  // مفاتيح الترتيب = whitelist الـ Worker (PD_SORT) حرفيًا — مفتاح مش فيها بيرجع للافتراضي في صمت
+  const SORTMAP = { reg: 'registeredAt', emp: 'employee', orderNo: 'orderName', amount: 'amount', status: 'status', coll: 'collectedAt' };
+  const PRESETS = { today:'اليوم', yesterday:'أمس', last3:'آخر 3 أيام', last7:'آخر 7 أيام', last14:'آخر 14 يوم', last21:'آخر 21 يوم',
+    last30:'آخر 30 يوم', last60:'آخر 60 يوم', last90:'آخر 90 يوم', thisMonth:'الشهر الحالي', lastMonth:'الشهر السابق',
+    thisYear:'العام الحالي', lastYear:'العام السابق' };
+  const MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 
-  function pdFillEmployees(employees) {
-    const sel = $('pdEmp'); if (!sel) return;
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">كل الموظفين</option>' + employees
-      .map(e => `<option value="${esc(e.username)}">${esc(e.display_name)}</option>`).join('');
-    sel.value = cur;
+  // ── الحالة ─────────────────────────────────────────────────────
+  const st = { ms: { emp: new Set(), status: new Set() }, num: { amount: { from: '', to: '' } },
+               q: { orderNo: '' }, tok: { orderNo: [] },
+               date: { reg: { preset: '', from: '', to: '', month: '' } }, tm: { reg: { from: '', to: '' } },
+               sort: { key: null, dir: null } };
+  let data = null, pageNo = 1, loadedOnce = false, reqId = 0, fetchTimer = 0;
+
+  const typeOf = k => MS_KEYS.includes(k) ? 'ms' : NUM_KEYS.includes(k) ? 'num' : Q_KEYS.includes(k) ? 'q' : 'date';
+  const latinDigits = s => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  const orderParts = v => latinDigits(v).split(/\D+/).filter(Boolean);   // المسافة/الفاصلة = أوردر تاني (OR)
+  const qClean = k => latinDigits(st.q[k]).replace(/\D/g, '');
+  const qOn = k => st.tok[k].length > 0 || !!qClean(k);
+  const tmCount = k => (st.tm[k].from || st.tm[k].to) ? 1 : 0;
+  const fmtD = v => { if (!v) return '—'; const p = String(v).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : v; };
+  const hm2m = s => { const [h, m] = String(s).split(':').map(Number); return h * 60 + m; };
+  const m2hm = m => `${pad2(Math.floor(m / 60))}:${pad2(m % 60)}`;
+  const fT = v => { const [h, m] = String(v).split(':').map(Number); return `${pad2(h % 12 || 12)}:${pad2(m)} ${h < 12 ? 'ص' : 'م'}`; };
+  function fmtT(v) { if (!v) return '—'; let [h, m] = v.split(':').map(Number); const s = h >= 12 ? 'مساءً' : 'صباحاً'; h = h % 12 || 12; return `${pad2(h)}:${pad2(m)} ${s}`; }
+  const mLbl = m => m >= 1440 ? 'نهاية اليوم' : fmtT(m2hm(m));
+  const tmRange = a => `من 🕐 ${a.from ? fmtT(a.from) : 'بداية اليوم'} إلى 🕐 ${a.to ? fmtT(a.to) : 'نهاية اليوم'}`;
+  const curYear = () => +cairoDateStr().slice(0, 4);
+  function addDays(s, n) { const [y, m, d] = s.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); }
+  function monthRange(y, m) { return [`${y}-${pad2(m)}-01`, `${y}-${pad2(m)}-${pad2(new Date(Date.UTC(y, m, 0)).getUTCDate())}`]; }
+  function dateLabel(d) {
+    return d.preset ? PRESETS[d.preset]
+      : d.month ? (d.month.length === 4 ? `عام ${d.month}` : `${MONTHS_AR[+d.month.slice(5) - 1]} ${d.month.slice(0, 4)}`)
+      : `من 📅 ${fmtD(d.from)} إلى 📅 ${fmtD(d.to)}`;
   }
 
-  function pdParams() {
+  // ── عناصر قوايم القيم (الموظف · الحالة) + عدّاد كل قيمة من facets السيرفر ──
+  function itemsFor(k) {
+    const f = data && data.facets;
+    if (k === 'status') return STATUS_ORDER.map(v => ({ v, l: PD_STATUS[v].label, c: f ? (f.status[v] ?? 0) : null }));
+    return Object.keys(empNames).map(u => ({ v: u, l: empNames[u], c: f ? (f.employee[u] ?? 0) : null }))
+      .sort((a, b) => a.l.localeCompare(b.l, 'ar'));
+  }
+  const labelOf = (k, v) => (itemsFor(k).find(i => i.v === v) || { l: v }).l;
+
+  // ── باراميترات الفلاتر للسيرفر (مصدر واحد) ───────────────────────
+  function params() {
     const p = {};
-    if (pdStatuses.size)           p.statuses  = [...pdStatuses].join(',');
-    if (pdSearchTerm.trim())       p.search    = pdSearchTerm.trim();
-    if ($('pdDateFrom').value)     p.dateFrom  = $('pdDateFrom').value;
-    if ($('pdDateTo').value)       p.dateTo    = $('pdDateTo').value;
-    if ($('pdEmp').value)          p.employees = $('pdEmp').value;
+    if (st.ms.status.size) p.statuses = [...st.ms.status].join(',');
+    if (st.ms.emp.size) p.employees = [...st.ms.emp].join(',');
+    const ords = [...st.tok.orderNo, ...orderParts(st.q.orderNo)];
+    if (ords.length) p.orders = ords.join(',');
+    const a = st.num.amount;
+    if (a.from !== '') p.amountFrom = a.from;
+    if (a.to !== '') p.amountTo = a.to;
+    const d = st.date.reg, t = st.tm.reg;
+    if (d.from) p.dateFrom = d.from;
+    if (d.to) p.dateTo = d.to;
+    if (t.from) p.timeFrom = t.from;
+    if (t.to) p.timeTo = t.to;
+    if (st.sort.key && SORTMAP[st.sort.key]) { p.sortKey = SORTMAP[st.sort.key]; p.sortDir = st.sort.dir; }
     return p;
   }
-  function pdAnyFilter() { return Object.keys(pdParams()).length > 0; }
-  function pdUpdateClearBtn() { $('pdClearBtn').classList.toggle('inactive', !pdAnyFilter()); }
+  // ⚠️ !!value مش !== null — undefined !== null = true (data-table-standard § 3)
+  function anyFilterActive() {
+    return MS_KEYS.some(k => st.ms[k].size > 0)
+      || NUM_KEYS.some(k => { const a = st.num[k]; return !!a.from || !!a.to; })
+      || Q_KEYS.some(k => qOn(k))
+      || DATE_KEYS.some(k => !!st.date[k].from || !!st.date[k].to)
+      || TIME_KEYS.some(k => tmCount(k) > 0);
+  }
+  function activeCount(k) {
+    const ty = typeOf(k);
+    if (ty === 'ms') return st.ms[k].size;
+    if (ty === 'num') { const a = st.num[k]; return (a.from !== '' || a.to !== '') ? 1 : 0; }
+    if (ty === 'q') return st.tok[k].length + (qClean(k) ? 1 : 0);
+    return ((st.date[k].from || st.date[k].to) ? 1 : 0) + tmCount(k);
+  }
+  const resetDate = k => { st.date[k] = { preset: '', from: '', to: '', month: '' }; };
+  const resetTm = k => { st.tm[k] = { from: '', to: '' }; };
+  function clearAll() {
+    MS_KEYS.forEach(k => st.ms[k].clear());
+    st.num.amount = { from: '', to: '' }; st.q.orderNo = ''; st.tok.orderNo = [];
+    DATE_KEYS.forEach(resetDate); TIME_KEYS.forEach(resetTm);
+    closePop(); changed();
+  }
+  function setPreset(k, p) {
+    const t = cairoDateStr(), Y = +t.slice(0, 4), M = +t.slice(5, 7), d = st.date[k];
+    let r;
+    if (p === 'today') r = [t, t];
+    else if (p === 'yesterday') { const y = addDays(t, -1); r = [y, y]; }
+    else if (p.startsWith('last') && /^\d+$/.test(p.slice(4))) r = [addDays(t, -(+p.slice(4) - 1)), t];
+    else if (p === 'thisMonth') r = monthRange(Y, M);
+    else if (p === 'lastMonth') r = M === 1 ? monthRange(Y - 1, 12) : monthRange(Y, M - 1);
+    else if (p === 'thisYear') r = [`${Y}-01-01`, `${Y}-12-31`];
+    else r = [`${Y - 1}-01-01`, `${Y - 1}-12-31`];
+    d.preset = p; d.month = ''; d.from = r[0]; d.to = r[1];
+  }
+  function setMonth(k, v) {   // «شهر محدد» = الشهر التقويمي كامل
+    const d = st.date[k]; d.preset = '';
+    if (/^\d{4}-\d{2}$/.test(v)) { const r = monthRange(+v.slice(0, 4), +v.slice(5, 7)); d.month = v; d.from = r[0]; d.to = r[1]; }
+    else if (/^\d{4}$/.test(v)) { d.month = v; d.from = `${v}-01-01`; d.to = `${v}-12-31`; }
+    else { d.month = ''; d.from = ''; d.to = ''; }
+  }
 
-  function pdRenderChips() {
-    const c = pdCounts || {};
-    $('pdStatusRow').innerHTML = PD_STATUS_ORDER.map(k => `
-      <button class="pd-chip ${pdStatuses.has(k) ? 'on' : ''}" title="${esc(PD_STATUS[k].hint)}" onclick="pdToggleStatus('${k}')">
-        ${PD_STATUS[k].label}<span class="pd-n">${c[k] != null ? c[k] : '—'}</span>
-      </button>`).join('');
-  }
-  function pdToggleStatus(k) {
-    pdStatuses.has(k) ? pdStatuses.delete(k) : pdStatuses.add(k);
-    pdOnFilter();
-  }
-  function pdOnSearch(el) {
-    el.classList.toggle('has-value', el.value.trim().length > 0);
-    clearTimeout(pdSearchTimer);
-    pdSearchTimer = setTimeout(() => { pdSearchTerm = el.value; pdOnFilter(); }, 400);
-  }
-  function pdOnFilter() {
-    pdUpdateClearBtn(); pdRenderChips();
-    pdPage = 1;
-    if (pdLoadedOnce) pdFetch();
-  }
-  function pdClearFilters() {
-    pdStatuses.clear(); pdSearchTerm = '';
-    $('pdSearch').value = ''; $('pdSearch').classList.remove('has-value');
-    $('pdDateFrom').value = ''; $('pdDateTo').value = ''; $('pdEmp').value = '';
-    pdOnFilter();
-  }
-  function pdReset() {
-    pdRows = []; pdTotal = 0; pdPage = 1; pdCounts = null; pdLoadedOnce = false;
-    pdStatuses.clear(); pdSearchTerm = '';
-    $('pdSearch').value = ''; $('pdDateFrom').value = ''; $('pdDateTo').value = ''; $('pdEmp').value = '';
-    $('pdBody').innerHTML = '<tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>';
-    $('pdCount').textContent = '—'; $('pdPager').style.display = 'none'; $('pdWarn').style.display = 'none';
-    pdUpdateClearBtn(); pdRenderChips();
+  // ── الأعمدة ────────────────────────────────────────────────────
+  const COLS = [
+    { k: 'reg',     l: 'التسجيل',        flt: 'reg' },
+    { k: 'emp',     l: 'الموظف',         flt: 'emp' },
+    { k: 'orderNo', l: 'رقم الأوردر',    flt: 'orderNo' },
+    { k: 'amount',  l: 'المبلغ (EGP)',   flt: 'amount' },
+    { k: 'courier', l: 'المندوب',        nosort: true },
+    { k: 'items',   l: 'المنتجات',       nosort: true },
+    { k: 'status',  l: 'الحالة',         flt: 'status' },
+    { k: 'coll',    l: 'التحصيل' },
+    { k: 'cust',    l: 'العميل',         nosort: true },
+    { k: 'live',    l: 'شوبيفاي الآن',   nosort: true },
+  ];
+  const FUNNEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg>';
+  const ICO_CAL = '<svg class="dt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+  const ICO_CLK = '<svg class="dt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  const dtInp = attrs => `<div class="dt-wrap"><input type="date" class="inp" ${attrs}>${ICO_CAL}</div>`;
+  function buildHead() {
+    Q('#pdCg').innerHTML = COLS.map(c => `<col data-c="${c.k}">`).join('');
+    Q('#pdHead').innerHTML = '<tr>' + COLS.map(c => `<th data-col="${c.k}" ${c.flt ? `data-fk="${c.flt}"` : ''}><div class="th-in">` +
+      ((c.nosort || !SORTMAP[c.k]) ? `<span>${c.l}</span>`
+        : `<span class="th-label" data-sort="${c.k}" tabindex="0" role="button">${c.l}<span class="sort-icon"></span></span>`) +
+      (c.flt ? `<button class="th-flt" type="button" data-flt="${c.flt}" aria-label="فلتر ${esc(c.l)}">${FUNNEL}<b class="th-cnt"></b></button>` : '') +
+      `</div><span class="col-rz" data-rz="${c.k}"></span></th>`).join('') + '</tr>';
   }
 
-  async function pdRefresh() {
+  // ── الجلب (server-side) — آخر طلب بس هو اللي بيتعرض ───────────────
+  function schedule(delay) { clearTimeout(fetchTimer); fetchTimer = setTimeout(fetchNow, delay === undefined ? 250 : delay); }
+  function changed() {
+    hideTip(); updateStates(); renderChips();
+    pageNo = 1;
+    if (loadedOnce) schedule();
+  }
+  async function fetchNow() {
+    clearTimeout(fetchTimer);
     if (!isConfigured()) { showToast('الأداة غير مضبوطة', 'error'); openSettings(); return; }
-    pdLoadedOnce = true; pdPage = 1;
-    await pdFetch();
-  }
-
-  async function pdFetch() {
-    if (pdLoading) { pdQueued = true; return; }
-    pdLoading = true;
-    const offset = (pdPage - 1) * PD_PAGE_SIZE;
-    $('pdBody').innerHTML = '<tr class="empty-row"><td colspan="10">جاري التحميل...</td></tr>';
+    loadedOnce = true;
+    const my = ++reqId;
+    Q('#pdScroll').classList.add('is-loading');
+    if (!data) Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}">جاري التحميل...</td></tr>`;
     try {
-      const d = await apiGet('pending_details', { ...pdParams(), limit: PD_PAGE_SIZE, offset });
-      pdRows = d.rows || []; pdTotal = d.total || 0; pdCounts = d.counts || null;
-      pdRenderChips(); pdRenderTable(); pdRenderPager(); pdRenderWarn(d);
+      const d = await apiGet('pending_details', { ...params(), limit: PAGE, offset: (pageNo - 1) * PAGE });
+      if (my !== reqId) return;   // طلب أقدم — الفلاتر اتغيّرت وإحنا مستنيين
+      data = d;
+      Q('#pdUpd').textContent = `آخر تحديث ${formatDateTime(new Date().toISOString())}`;
+      render(); renderWarn(d);
     } catch (err) {
-      $('pdBody').innerHTML = `<tr class="empty-row"><td colspan="10" style="color:var(--red)">فشل التحميل — ${esc(err.message)}</td></tr>`;
-      $('pdCount').textContent = '—'; $('pdPager').style.display = 'none';
+      if (my !== reqId) return;
+      Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}" style="color:var(--red)">فشل التحميل — ${esc(err.message)}</td></tr>`;
+      Q('#pdCount').textContent = '—'; Q('#pdPager').style.display = 'none';
       showToast('فشل تحميل المعلّقة والمحصّلة: ' + err.message, 'error');
     }
-    pdLoading = false;
-    // لو الفلاتر اتغيّرت أثناء التحميل، نعيد بالفلاتر الحالية بدل ما نسيب نتيجة قديمة معروضة
-    if (pdQueued) { pdQueued = false; pdFetch(); }
+    if (my === reqId) Q('#pdScroll').classList.remove('is-loading');
   }
-  let pdQueued = false;
-
   // تنبيهات صريحة بدل الصمت: سقف الصفوف · قراءة مفاتيح KV المقصوصة · فشل شوبيفاي
-  function pdRenderWarn(d) {
+  function renderWarn(d) {
     const w = [];
-    if (d.truncated)         w.push(`⚠️ الاستعلام وصل للسقف (${(d.cap || 2000).toLocaleString('en-US')} تسجيل) — الأقدم منه مش ظاهر. ضيّق الفترة.`);
-    if (d.orphansTruncated)  w.push('⚠️ مفاتيح KV بدون سجل كتيرة — اتعرض جزء منها بس.');
+    if (d.truncated) w.push(`⚠️ الاستعلام وصل للسقف (${(d.cap || 2000).toLocaleString('en-US')} تسجيل) — الأقدم منه مش ظاهر. ضيّق الفترة.`);
+    if (d.orphansTruncated) w.push('⚠️ مفاتيح KV بدون سجل كتيرة — اتعرض جزء منها بس.');
     if (d.kvComplete === false) w.push('⚠️ قائمة مفاتيح KV ناقصة (سقف القراءة) — حالات «معلّق» ممكن تكون غير مكتملة.');
     if (d.shopify && d.shopify.ok === false)
       w.push(`⚠️ تعذّر جلب حالة شوبيفاي الحية وبيانات العميل — الباقي معروض من KV وD1. (${esc(d.shopify.error)})`);
-    const el = $('pdWarn');
+    if (st.tm.reg.from && st.tm.reg.to && st.tm.reg.from > st.tm.reg.to) w.push('⚠️ وقت «من» بعد وقت «إلى» في فلتر التسجيل — مفيش نتايج.');
+    const el = Q('#pdWarn');
     el.style.display = w.length ? '' : 'none';
     el.innerHTML = w.join('<br>');
   }
 
-  function pdRenderTable() {
-    $('pdCount').textContent = pdTotal.toLocaleString('en-US');
-    const body = $('pdBody');
-    if (!pdRows.length) {
-      body.innerHTML = `<tr class="empty-row"><td colspan="10">${pdAnyFilter() ? 'لا توجد نتائج تطابق الفلاتر' : 'لا توجد أوردرات مسجّلة مسبقًا'}</td></tr>`;
+  // ── الرسم ──────────────────────────────────────────────────────
+  function rowHtml(r) {
+    const stt = PD_STATUS[r.status] || { label: r.status, cls: 'none', hint: '' };
+    const items = r.lineItems || [];
+    const itemsPlain = items.map(li => `${li.sku} × ${li.quantity}`).join('، ');
+    const itemsCell = items.length
+      ? `<div class="items-chips">${items.map(li => `<span class="item-chip">${esc(li.sku)} × ${esc(li.quantity)}</span>`).join('')}</div>` : '—';
+
+    const c = r.collection;
+    let collCell = '—';
+    if (c) {
+      const pm = c.paymentMethods || {};
+      const methods = [['cash', 'كاش'], ['instapay', 'إنستاباي'], ['wallet', 'محفظة']]
+        .filter(([k]) => Number(pm[k]) > 0).map(([k, l]) => `${l} ${fmt(Number(pm[k]))}`).join(' · ');
+      collCell = `${formatDateTime(c.at)}<div class="sub">${esc(empNames[c.by] || c.by || '—')}${c.amount != null ? ' · ' + fmt(Number(c.amount)) : ''}</div>`
+        + (methods ? `<div class="sub">${esc(methods)}</div>` : '');
+    }
+
+    const lv = r.live;
+    let custCell = '—', liveCell = '—';
+    if (lv && lv.notFound) {
+      liveCell = '<span class="res-badge bad" title="الأوردر مش موجود على شوبيفاي">مش موجود</span>';
+    } else if (lv) {
+      custCell = (lv.customerName || lv.customerPhone)
+        ? `${esc(lv.customerName || '—')}<div class="sub">${esc(lv.customerPhone || '')}</div>` : '—';
+      const fin = FIN_AR[lv.financialStatus] || lv.financialStatus || '—';
+      liveCell = (lv.cancelled ? '<span class="res-badge bad">ملغي</span> ' : '')
+        + `<span class="res-badge ${lv.financialStatus === 'PAID' ? 'ok' : 'none'}">${esc(fin)}</span>`
+        + (lv.outstanding != null && Number(lv.outstanding) !== 0 ? `<div class="sub">متبقي ${fmt(Number(lv.outstanding))}</div>` : '');
+    }
+    return `<tr>
+      <td class="col-num">${r.registeredAt ? formatDateTime(r.registeredAt) : '—'}</td>
+      <td>${esc(empNames[r.registeredBy] || r.registeredBy || '—')}</td>
+      <td class="col-num">${orderLink(r.orderName, r.orderId)}${r.registrations > 1 ? `<div class="sub">اتسجّل ${r.registrations} مرات</div>` : ''}</td>
+      <td class="col-num">${r.amount != null ? fmt(Number(r.amount)) : '—'}</td>
+      <td>${r.courier ? esc(r.courier) : '—'}</td>
+      <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
+      <td><span class="res-badge ${stt.cls}" title="${esc(stt.hint)}">${stt.label}</span></td>
+      <td class="col-num">${collCell}</td>
+      <td>${custCell}</td>
+      <td>${liveCell}</td>
+    </tr>`;
+  }
+  function render() {
+    const rows = data.rows || [], total = data.total || 0;
+    Q('#pdCount').textContent = total.toLocaleString('en-US');
+    Q('#pdBody').innerHTML = rows.length ? rows.map(rowHtml).join('')
+      : `<tr class="empty-row"><td colspan="${COLS.length}">${anyFilterActive() ? 'مفيش نتايج مطابقة للفلاتر' : 'لا توجد أوردرات مسجّلة مسبقًا'}</td></tr>`;
+    const pages = Math.max(1, Math.ceil(total / PAGE));
+    Q('#pdPager').style.display = pages > 1 ? '' : 'none';
+    Q('#pdPageInfo').textContent = `صفحة ${pageNo} من ${pages}`;
+    Q('#pdPrev').disabled = pageNo <= 1; Q('#pdNext').disabled = pageNo >= pages;
+    renderChips(); updateStates();
+    if (wReady) applyW(); else ensureW();   // الصفوف اتغيّرت → سكرول عمودي ممكن ظهر/اختفى → عرض الكارت اتغيّر
+  }
+
+  // ── Chips: سطر لكل فلتر، واسم الفلتر مرة واحدة ──────────────────
+  function chipRow(label, chips) { return `<div class="ms-chips-row"><span class="chips-label">${label}:</span>${chips.join('')}</div>`; }
+  const chip = (t, rm) => `<span class="ms-chip">${esc(t)}<button type="button" data-rm="${esc(rm)}" aria-label="إزالة">✕</button></span>`;
+  function renderChips() {
+    const z = Q('#pdChips'); if (!z) return;
+    const rows = [];
+    MS_KEYS.forEach(k => { if (st.ms[k].size) rows.push(chipRow(FL[k], [...st.ms[k]].map(v => chip(labelOf(k, v), `ms:${k}:${v}`)))); });
+    NUM_KEYS.forEach(k => { const a = st.num[k]; if (a.from !== '' || a.to !== '') rows.push(chipRow(FL[k], [chip(`من ${a.from || '—'} إلى ${a.to || '—'}`, `range:${k}:`)])); });
+    Q_KEYS.forEach(k => {
+      const cs = st.tok[k].map((t, i) => chip('#' + t, `tok:${k}:${i}`));
+      if (qClean(k)) cs.push(chip(st.q[k].trim(), `q:${k}:`));
+      if (cs.length) rows.push(chipRow(FL[k], cs));
+    });
+    DATE_KEYS.forEach(k => {
+      const d = st.date[k], a = st.tm[k], cs = [];
+      if (d.from || d.to) cs.push(chip(dateLabel(d), `date:${k}:`));
+      if (a && (a.from || a.to)) cs.push(chip(tmRange(a), `time:${k}:`));
+      if (cs.length) rows.push(chipRow(FL[k], cs));
+    });
+    z.innerHTML = rows.join('');
+  }
+  function updateStates() {
+    const on = anyFilterActive();
+    document.querySelectorAll('#pdSection [data-clearall]').forEach(b => b.classList.toggle('inactive', !on));
+    document.querySelectorAll('#pdHead th[data-fk]').forEach(th => {
+      const n = activeCount(th.dataset.fk);
+      th.classList.toggle('flt-on', n > 0);
+      const c = th.querySelector('.th-cnt'); if (c) c.textContent = n > 1 ? n : (n ? '●' : '');
+    });
+    document.querySelectorAll('#pdHead th[data-col]').forEach(th => {
+      const act = st.sort.key === th.dataset.col;
+      th.classList.toggle('sorted', act);
+      const si = th.querySelector('.sort-icon');
+      if (si) { si.textContent = act ? (st.sort.dir === 'asc' ? '▲' : '▼') : ''; si.classList.toggle('active', act); }
+    });
+  }
+  // الترتيب: 3 حالات، ومستقل عن الفلاتر، وأي تغيير بيرجّع لصفحة ١ (والترتيب server-side)
+  function toggleSort(k) {
+    if (st.sort.key !== k) st.sort = { key: k, dir: 'asc' };
+    else if (st.sort.dir === 'asc') st.sort.dir = 'desc';
+    else st.sort = { key: null, dir: null };
+    changed();
+  }
+
+  // ── القائمة العائمة (position:fixed على body) ──────────────────
+  let pop = null, popKey = null, popAnchor = null, popQ = '', popYear = 0;
+  let tpEl = null, tpWhich = null, tpAnchor = null, tpM = null;   // قايمة الساعة/الدقيقة
+  function closePop() { if (pop) pop.remove(); pop = null; popKey = null; popAnchor = null; popQ = ''; closeTp(); }
+  function openPop(k, anchor) {
+    hideTip();
+    if (popKey === k && popAnchor === anchor) { closePop(); return; }
+    closePop(); popKey = k; popAnchor = anchor;
+    pop = document.createElement('div'); pop.className = 'pop tbx'; document.body.appendChild(pop);
+    if (typeOf(k) === 'date') { const m = st.date[k].month; popYear = m ? +m.slice(0, 4) : curYear(); }
+    buildPop();
+    const f = pop.querySelector('[data-autofocus]'); if (f) f.focus();
+  }
+  function place() {
+    if (!pop || !popAnchor) return;
+    if (!document.contains(popAnchor)) { closePop(); return; }
+    pop.style.maxHeight = '';
+    const r = popAnchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+    const left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8));
+    // ⚠️ الهيدر الثابت للصفحة (z 300) فوق القوايم (z 200) — القايمة ما تتحطّش تحته:
+    // لو مش هتتّسع تحت الأيقونة ولا فوقها (تحت الهيدر)، بتتقصّ وبتسكرول جوّاها (.pop-body).
+    const hdr = Q('#stickyWrap'), minTop = Math.max(8, (hdr ? hdr.getBoundingClientRect().bottom : 0) + 6);
+    const below = innerHeight - (r.bottom + 6) - 8, above = r.top - 6 - minTop;
+    let top, maxH = 0;
+    if (h <= below) top = r.bottom + 6;
+    else if (h <= above) top = r.top - 6 - h;
+    else if (below >= above) { top = r.bottom + 6; maxH = below; }
+    else { top = minTop; maxH = above; }
+    if (maxH) pop.style.maxHeight = Math.max(160, maxH) + 'px';
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
+  function listHtml(k) {
+    const q = popQ.trim().toLowerCase(), sel = st.ms[k];
+    const its = itemsFor(k).filter(i => !q || i.l.toLowerCase().includes(q));
+    return its.map(i => `<div class="ms-item ${sel.has(i.v) ? 'on' : ''}" data-ms="${esc(i.v)}"><span class="cb"></span><span>${esc(i.l)}</span><span class="ms-cnt">${i.c === null ? '—' : i.c}</span></div>`).join('')
+      || '<div class="empty-row" style="padding:14px;text-align:center">لا نتائج</div>';
+  }
+  function buildPop() {
+    closeTp();
+    const k = popKey, ty = typeOf(k); let h = '';
+    if (ty === 'ms') {
+      h = `<div class="pop-hd">${FL[k]}</div>` +
+        `<div class="ms-ftr-top"><button class="clear-btn" type="button" data-act="clear">✕ مسح الاختيار</button><button class="lnk" type="button" data-act="all">تحديد الكل</button></div>` +
+        (itemsFor(k).length >= SEARCH_MIN ? '<div class="pop-srch"><input class="inp" id="popSearch" data-msq placeholder="بحث..." data-autofocus></div>' : '') +
+        `<div class="ms-list">${listHtml(k)}</div>`;
+    } else if (ty === 'num') {
+      const a = st.num[k];
+      h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="clear">✕ مسح الاختيار</button></div>` +
+        `<div class="pop-body"><div class="sec"><div class="sec-t">نطاق (من — إلى)</div><div class="rng"><div><label for="rf-${k}">من</label><input id="rf-${k}" type="number" class="inp" data-r="from" data-rk="${k}" value="${esc(a.from)}" data-autofocus></div><div><label for="rt-${k}">إلى</label><input id="rt-${k}" type="number" class="inp" data-r="to" data-rk="${k}" value="${esc(a.to)}"></div></div></div></div>`;
+    } else if (ty === 'q') {
+      h = `<div class="pop-hd">${FL[k]}</div><div class="pop-body"><div class="search-wrap"><input id="q-${k}" class="inp ${qClean(k) ? 'has-value' : ''}" data-q="${k}" value="${esc(st.q[k])}" placeholder="اكتب رقم واضغط Enter" autocomplete="off" data-autofocus><span class="search-icon">🔍</span></div>` +
+        `<div class="tok-row">${st.tok[k].map((t, i) => `<span class="ms-chip">#${esc(t)}<button type="button" data-tokrm="${i}" aria-label="إزالة">✕</button></span>`).join('')}</div>` +
+        `<div class="hint">اكتب رقم أوردر (أو جزء منه) واضغط Enter لإضافته — أو الزق كذا رقم مع بعض. النتيجة أي واحد منهم.</div>` +
+        `<button class="clear-btn" type="button" data-act="qclear">✕ مسح الاختيار</button></div>`;
+    } else {
+      const d = st.date[k], cy = curYear();
+      const pb = p => `<button type="button" data-preset="${p}" class="${d.preset === p ? 'on' : ''}">${PRESETS[p]}</button>`;
+      const mb = (n, i) => { const v = `${popYear}-${pad2(i + 1)}`; return `<button type="button" data-mon="${v}" class="${d.month === v ? 'on' : ''}">${n}</button>`; };
+      h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="dclear">✕ مسح الاختيار</button></div>` +
+        `<div class="pop-body">` +
+        `<div class="sec"><div class="pills c3">${['today','yesterday','last3','last7','last14','last21','last30','last60','last90'].map(pb).join('')}</div></div>` +
+        `<div class="sec"><div class="pills c4">${['thisMonth','lastMonth','thisYear','lastYear'].map(pb).join('')}</div></div>` +
+        `<div class="sec"><div class="yr-step"><button type="button" data-yr="-1" aria-label="السنة السابقة" ${popYear <= cy - 10 ? 'disabled' : ''}>›</button><button type="button" class="yr-lbl ${d.month === String(popYear) ? 'on' : ''}" data-yrsel aria-label="العام كله">${popYear}</button><button type="button" data-yr="1" aria-label="السنة التالية" ${popYear >= cy ? 'disabled' : ''}>‹</button></div><div class="pills c6">${MONTHS_AR.map(mb).join('')}</div></div>` +
+        `<div class="sec"><div class="rng"><div><label for="df-${k}">من تاريخ</label>${dtInp(`id="df-${k}" data-d="from" data-dk="${k}" value="${d.from}"`)}</div><div><label for="dt-${k}">إلى تاريخ</label>${dtInp(`id="dt-${k}" data-d="to" data-dk="${k}" value="${d.to}"`)}</div></div></div>` +
+        timeBodyHtml(k) + `</div>`;
+    }
+    pop.innerHTML = h; pop.classList.toggle('wide', ty === 'date');
+    place();
+  }
+  function timeBodyHtml(k) {
+    const a = st.tm[k], lo = a.from ? hm2m(a.from) : 0, hi = a.to ? hm2m(a.to) : 1440, L = Math.min(lo, hi), H = Math.max(lo, hi);
+    const tf = (w, lbl) => `<div><label>${lbl}</label><div class="dt-wrap"><button type="button" class="inp tf-btn" data-tf="${w}" aria-label="${lbl}"><span class="tf-v ${a[w] ? '' : 'ph'}">${a[w] ? fT(a[w]) : '--:--'}</span>${ICO_CLK}</button></div></div>`;
+    return `<div class="sec"><div class="sl-lbl">من <b>${mLbl(L)}</b> إلى <b>${mLbl(H)}</b></div>` +
+      `<div class="dual"><div class="dual-track"><div class="dual-fill" style="right:${L / 14.4}%;left:${100 - H / 14.4}%"></div></div><input type="range" min="0" max="1440" step="1" value="${lo}" data-sl aria-label="من وقت"><input type="range" min="0" max="1440" step="1" value="${hi}" data-sl aria-label="إلى وقت"></div></div>` +
+      `<div class="sec"><div class="rng">${tf('from', 'من وقت')}${tf('to', 'إلى وقت')}</div><div class="tf-warn">${lo > hi ? 'وقت «من» بعد وقت «إلى» — مفيش نتايج' : ''}</div></div>`;
+  }
+  // المنزلق والحقول بيتزامنوا على نفس الحالة. المنزلق بخطوة 5 دقايق، والحقل بالدقيقة
+  function syncTimeUI(fromSlider) {
+    const tk = popKey; if (!pop || !st.tm[tk]) return;
+    const a = st.tm[tk], lo = a.from ? hm2m(a.from) : 0, hi = a.to ? hm2m(a.to) : 1440, L = Math.min(lo, hi), H = Math.max(lo, hi);
+    const f = pop.querySelector('.dual-fill'); f.style.right = (L / 14.4) + '%'; f.style.left = (100 - H / 14.4) + '%';
+    pop.querySelector('.sl-lbl').innerHTML = `من <b>${mLbl(L)}</b> إلى <b>${mLbl(H)}</b>`;
+    if (!fromSlider) { const sl = pop.querySelectorAll('[data-sl]'); sl[0].value = lo; sl[1].value = hi; }
+    ['from', 'to'].forEach(w => { const v = pop.querySelector(`[data-tf="${w}"] .tf-v`); if (v) { v.textContent = a[w] ? fT(a[w]) : '--:--'; v.classList.toggle('ph', !a[w]); } });
+    pop.querySelector('.tf-warn').textContent = lo > hi ? 'وقت «من» بعد وقت «إلى» — مفيش نتايج' : '';
+  }
+  function updSlider(t) {
+    t.value = Math.round(+t.value / 5) * 5;
+    const v = [...pop.querySelectorAll('[data-sl]')].map(i => +i.value), a = Math.min(...v), b = Math.max(...v), s = st.tm[popKey];
+    s.from = a > 0 ? m2hm(a) : ''; s.to = b < 1440 ? m2hm(b) : '';
+    syncTimeUI(true); changed();
+  }
+  // قايمة الساعة والدقيقة: عمودين بسكرول عادي (مفيش لفّ لا نهائي): ساعات 12 ص ← 11 م ودقايق 00→59
+  function closeTp() { if (tpEl) tpEl.remove(); if (tpAnchor) tpAnchor.classList.remove('open'); tpEl = null; tpWhich = null; tpAnchor = null; tpM = null; }
+  function placeTp() {
+    if (!tpEl || !tpAnchor) return;
+    const r = tpAnchor.getBoundingClientRect(), w = tpEl.offsetWidth, h = tpEl.offsetHeight;
+    const left = Math.max(8, Math.min(r.left, innerWidth - w - 8));
+    let top = r.bottom + 4; if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 4);
+    tpEl.style.left = left + 'px'; tpEl.style.top = top + 'px';
+  }
+  function toggleTp(w, anchor) {
+    if (tpEl && tpWhich === w) { closeTp(); return; }
+    closeTp(); tpWhich = w; tpAnchor = anchor; anchor.classList.add('open');
+    const cur = st.tm[popKey][w], ch = cur ? +cur.slice(0, 2) : -1, cm = cur ? +cur.slice(3) : -1;
+    const col = (ttl, sub, items) => `<div class="tp-col"><div class="tp-hd">${ttl} <small>${sub}</small></div><div class="tp-list">${items}</div></div>`;
+    const hrs = Array.from({ length: 24 }, (_, h) => h).map(h => `<button type="button" class="tp-it ${h === ch ? 'on' : ''}" data-tph="${h}">${pad2(h % 12 || 12)} ${h < 12 ? 'ص' : 'م'}</button>`).join('');
+    const mns = Array.from({ length: 60 }, (_, i) => i).map(m => `<button type="button" class="tp-it ${m === cm ? 'on' : ''}" data-tpm="${m}">${pad2(m)}</button>`).join('');
+    tpEl = document.createElement('div'); tpEl.className = 'tp tbx'; tpEl.setAttribute('role', 'dialog');
+    tpEl.innerHTML = `<div class="tp-cols">${col('ساعة', 'HH', hrs)}<div class="tp-sep">:</div>${col('دقيقة', 'MM', mns)}</div><div class="tp-ft"><button class="lnk" type="button" data-tpclear>مسح</button><button class="tp-done" type="button" data-tpdone>تم</button></div>`;
+    document.body.appendChild(tpEl); placeTp();
+    tpEl.querySelectorAll('.tp-it.on').forEach(b => { const l = b.parentElement; l.scrollTop = b.offsetTop - l.clientHeight / 2 + b.offsetHeight / 2; });
+  }
+  function markTp() {
+    if (!tpEl) return;
+    const cur = st.tm[popKey][tpWhich], ch = cur ? +cur.slice(0, 2) : -1, cm = cur ? +cur.slice(3) : (tpM !== null ? tpM : -1);
+    tpEl.querySelectorAll('[data-tph]').forEach(b => b.classList.toggle('on', +b.dataset.tph === ch));
+    tpEl.querySelectorAll('[data-tpm]').forEach(b => b.classList.toggle('on', +b.dataset.tpm === cm));
+  }
+  function setTf(w, v) { st.tm[popKey][w] = v; tpM = null; syncTimeUI(false); changed(); markTp(); }
+  function tpAction(t) {
+    const b = t.closest('.tp-it'), cur = st.tm[popKey][tpWhich];
+    if (b) {
+      const ch = cur ? +cur.slice(0, 2) : null, cm = cur ? +cur.slice(3) : tpM;
+      if (b.dataset.tph !== undefined) setTf(tpWhich, `${pad2(+b.dataset.tph)}:${pad2(cm === null ? 0 : cm)}`);
+      else if (ch !== null) setTf(tpWhich, `${pad2(ch)}:${pad2(+b.dataset.tpm)}`);
+      else { tpM = +b.dataset.tpm; markTp(); }   // دقيقة اتختارت قبل الساعة → بتستنى
       return;
     }
-    body.innerHTML = pdRows.map(r => {
-      const st = PD_STATUS[r.status] || { label: r.status, cls: 'none', hint: '' };
-      const items = r.lineItems || [];
-      const itemsPlain = items.map(li => `${li.sku} × ${li.quantity}`).join('، ');
-      const itemsCell = items.length
-        ? `<div class="items-chips">${items.map(li => `<span class="item-chip">${esc(li.sku)} × ${esc(li.quantity)}</span>`).join('')}</div>`
-        : '—';
+    if (t.closest('[data-tpclear]')) { setTf(tpWhich, ''); return; }
+    if (t.closest('[data-tpdone]')) closeTp();
+  }
+  function renderList() { const l = pop && pop.querySelector('.ms-list'); if (l) l.innerHTML = listHtml(popKey); }
+  function markDatePop() {   // تحديث حالة الأزرار من غير إعادة بناء القايمة (عشان الفوكس)
+    if (!pop || typeOf(popKey) !== 'date') return;
+    const d = st.date[popKey];
+    pop.querySelectorAll('[data-preset]').forEach(b => b.classList.toggle('on', b.dataset.preset === d.preset));
+    pop.querySelectorAll('[data-mon]').forEach(b => b.classList.toggle('on', b.dataset.mon === d.month));
+    const yl = pop.querySelector('[data-yrsel]'); if (yl) yl.classList.toggle('on', d.month === String(popYear));
+  }
+  function commitTok(k) {   // Enter = ضيف المكتوب كتوكن (chip) وفضّي الحقل
+    const parts = orderParts(st.q[k]); if (!parts.length) return false;
+    parts.forEach(n => { if (!st.tok[k].includes(n)) st.tok[k].push(n); });
+    st.q[k] = ''; buildPop(); changed();
+    const f = pop && pop.querySelector('[data-autofocus]'); if (f) f.focus();
+    return true;
+  }
+  function popAction(t) {
+    const k = popKey, ty = typeOf(k);
+    if (tpEl && !t.closest('[data-tf]')) closeTp();
+    const tfb = t.closest('[data-tf]');
+    if (tfb) { toggleTp(tfb.dataset.tf, tfb); return; }
+    const it = t.closest('.ms-item');
+    if (it) { const s = st.ms[k], v = it.dataset.ms; s.has(v) ? s.delete(v) : s.add(v); renderList(); changed(); return; }
+    const tr = t.closest('[data-tokrm]');
+    if (tr) { st.tok[k].splice(+tr.dataset.tokrm, 1); buildPop(); changed(); const f = pop && pop.querySelector('[data-autofocus]'); if (f) f.focus(); return; }
+    const ys = t.closest('[data-yrsel]');
+    if (ys) { const v = String(popYear); if (st.date[k].month === v) resetDate(k); else setMonth(k, v); changed(); buildPop(); return; }
+    const yb = t.closest('[data-yr]');
+    if (yb) { if (yb.disabled) return; popYear = Math.max(curYear() - 10, Math.min(curYear(), popYear + (+yb.dataset.yr))); buildPop(); return; }
+    const mb = t.closest('[data-mon]');
+    if (mb) { const v = mb.dataset.mon; if (st.date[k].month === v) resetDate(k); else setMonth(k, v); changed(); buildPop(); return; }
+    const pr = t.closest('[data-preset]');
+    if (pr) { setPreset(k, pr.dataset.preset); changed(); buildPop(); return; }
+    const a = t.closest('[data-act]'); if (!a) return;
+    const act = a.dataset.act;
+    if (act === 'clear') { if (ty === 'num') st.num[k] = { from: '', to: '' }; else st.ms[k].clear(); buildPop(); changed(); }
+    else if (act === 'all') {
+      const q = popQ.trim().toLowerCase();
+      itemsFor(k).filter(i => !q || i.l.toLowerCase().includes(q)).forEach(i => st.ms[k].add(i.v));
+      renderList(); changed();
+    }
+    else if (act === 'qclear') { st.q[k] = ''; st.tok[k] = []; buildPop(); changed(); }
+    else if (act === 'dclear') { resetDate(k); resetTm(k); buildPop(); changed(); }
+  }
 
-      const c = r.collection;
-      let collCell = '—';
-      if (c) {
-        const pm = c.paymentMethods || {};
-        const methods = [['cash', 'كاش'], ['instapay', 'إنستاباي'], ['wallet', 'محفظة']]
-          .filter(([k]) => Number(pm[k]) > 0).map(([k, l]) => `${l} ${fmt(Number(pm[k]))}`).join(' · ');
-        collCell = `${formatDate(c.at)} ${formatTimeOnly(c.at)}
-          <span class="pd-sub">${esc(empNames[c.by] || c.by || '—')}${c.amount != null ? ' · ' + fmt(Number(c.amount)) : ''}</span>
-          ${methods ? `<span class="pd-sub">${esc(methods)}</span>` : ''}`;
+  // ── tooltip قيم الفلتر المحددة — مفيش اختيار = مفيش tooltip ──────
+  function tipText(k) {
+    if (!activeCount(k)) return '';
+    const ty = typeOf(k);
+    if (ty === 'ms') return [...st.ms[k]].map(v => labelOf(k, v)).join('، ');
+    if (ty === 'num') { const a = st.num[k]; return `من ${a.from || '—'} إلى ${a.to || '—'}`; }
+    if (ty === 'q') return [...st.tok[k].map(t => '#' + t), ...(qClean(k) ? [st.q[k].trim()] : [])].join(' أو ');
+    const d = st.date[k], tt = tmCount(k) ? tmRange(st.tm[k]) : ''; let dt = '';
+    if (d.from || d.to) { const r = `من 📅 ${fmtD(d.from)} إلى 📅 ${fmtD(d.to)}`; dt = (d.preset || d.month) ? `${dateLabel(d)}: ${r}` : r; }
+    return [dt, tt].filter(Boolean).join(' · ');
+  }
+  let tipEl = null;
+  function hideTip() { if (tipEl) tipEl.remove(); tipEl = null; }
+  function showTip(btn) {
+    hideTip();
+    const t = tipText(btn.dataset.flt);
+    if (!t || popAnchor === btn) return;
+    tipEl = document.createElement('div'); tipEl.className = 'tip tbx'; tipEl.textContent = t; document.body.appendChild(tipEl);
+    const r = btn.getBoundingClientRect(), w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    tipEl.style.left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)) + 'px';
+    let top = r.bottom + 6; if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    tipEl.style.top = top + 'px';
+  }
+
+  // ── الأحداث — listener واحد على document + حارس المعيار #32 ──────
+  const inPanel = t => !!(t.closest && t.closest('#panelPending'));
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (!document.contains(t)) return;                    // الهدف اتشال بسبب re-render → مفيش قرار قفل
+    if (tpEl && tpEl.contains(t)) { tpAction(t); return; }
+    const trg = t.closest('[data-flt]');
+    if (trg && inPanel(trg)) { e.stopPropagation(); openPop(trg.dataset.flt, trg); return; }
+    if (pop && pop.contains(t)) {
+      // الضغط في أي مكان بصندوق التاريخ يفتح اللوحة. showPicker بيرمي SecurityError جوه iframe — فمغطّي عليه الـ CSS
+      if (t.matches && t.matches('.dt-wrap input')) { try { t.showPicker(); } catch (_) {} }
+      popAction(t); return;
+    }
+    if (pop) closePop();
+    if (!inPanel(t)) return;
+    const rm = t.closest('[data-rm]');
+    if (rm) {
+      const [type, key, ...rest] = rm.dataset.rm.split(':'), v = rest.join(':');
+      if (type === 'ms') st.ms[key].delete(v);
+      else if (type === 'range') st.num[key] = { from: '', to: '' };
+      else if (type === 'q') st.q[key] = '';
+      else if (type === 'tok') st.tok[key].splice(+v, 1);
+      else if (type === 'date') resetDate(key);
+      else if (type === 'time') resetTm(key);
+      changed(); return;
+    }
+    if (t.closest('[data-clearall]')) { e.stopPropagation(); if (anyFilterActive()) clearAll(); return; }
+    const so = t.closest('[data-sort]'); if (so) { toggleSort(so.dataset.sort); return; }
+    if (t.closest('[data-pdrefresh]')) { e.stopPropagation(); pageNo = 1; fetchNow(); return; }
+    const pg = t.closest('[data-pdpage]');
+    if (pg) {
+      const pages = Math.max(1, Math.ceil(((data && data.total) || 0) / PAGE)), next = pageNo + (+pg.dataset.pdpage);
+      if (next >= 1 && next <= pages) { pageNo = next; fetchNow(); }
+      return;
+    }
+    if (t.closest('#pdBar')) { Q('#pdWrap').classList.toggle('collapsed'); Q('#pdTog').classList.toggle('open'); return; }
+  });
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.dataset.q !== undefined) { st.q[t.dataset.q] = t.value; t.classList.toggle('has-value', !!t.value.trim()); changed(); }
+    else if (t.dataset.d) { const d = st.date[t.dataset.dk]; d[t.dataset.d] = t.value; d.preset = ''; d.month = ''; changed(); markDatePop(); }
+    else if (t.dataset.r) { st.num[t.dataset.rk][t.dataset.r] = t.value; changed(); }
+    else if (t.dataset.sl !== undefined) updSlider(t);
+    else if (t.dataset.msq !== undefined) { popQ = t.value; renderList(); }
+  });
+  // سكرول جوّه القايمة نفسها (.pop-body / قايمة الساعة) مش سبب لإعادة التموضع ولا لقفل قايمة الساعة
+  document.addEventListener('scroll', e => {
+    const inside = (pop && pop.contains(e.target)) || (tpEl && tpEl.contains(e.target));
+    if (!inside) { place(); if (tpEl) closeTp(); }
+    hideTip();
+  }, true);
+  window.addEventListener('resize', () => { place(); closeTp(); });
+  // Enter داخل أي حقل في قائمة الفلتر = اقفل القائمة والفلتر يفضل · Escape يقفل (قايمة الساعة الأول)
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { if (tpEl) { closeTp(); return; } if (pop) closePop(); return; }
+    if (e.key === 'Enter' && !e.isComposing && pop && popKey === 'orderNo' && pop.contains(e.target) && e.target.matches('input[data-q]') && commitTok('orderNo')) { e.preventDefault(); return; }
+    if (e.key === 'Enter' && pop && pop.contains(e.target) && e.target.matches('input[data-q],input[data-r],input[data-d]')) { e.preventDefault(); e.target.blur(); closePop(); return; }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('#pdHead [data-sort]')) { e.preventDefault(); toggleSort(e.target.dataset.sort); }
+  });
+  document.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('#pdHead .th-flt'); if (b) showTip(b); else if (tipEl) hideTip(); });
+  document.addEventListener('mouseout', e => { if (!e.relatedTarget) hideTip(); });
+
+  // ══ التحكم اللايف في عرض الأعمدة (§ 9ب) — «كل الأعمدة متماثلة بالتناسب» ══
+  // W = العرض المفضّل لكل عمود · E = العرض الفعلي حسب مساحة الكارت. السحب: العمود المتسحب
+  // «مثبّت» والباقي بيتمدّد/بيتضغط حواليه · دبل كليك = ضبط تلقائي · محفوظ في localStorage (LS_COLS).
+  const MIN_W = 64, MAX_W = 700, INIT_CAP = 260, SOFT_MIN = 90;
+  const W = {}; let wReady = false, drag = null, wBadge = null, wRaf = 0;
+  const tbl = () => Q('#pdTbl');
+  const availW = () => { const sc = Q('#pdScroll'); return sc ? sc.clientWidth : 0; };
+  function saveW() { try { localStorage.setItem(LS_COLS, JSON.stringify(W)); } catch (e) {} }
+  function loadW() {
+    try {
+      const s = JSON.parse(localStorage.getItem(LS_COLS) || 'null');
+      return s && COLS.every(c => typeof s[c.k] === 'number' && s[c.k] >= MIN_W && s[c.k] <= MAX_W) ? s : null;
+    } catch (e) { return null; }
+  }
+  function effective(avail, pinKey) {
+    const free = !!(drag && drag.free);
+    const pin = pinKey !== undefined ? pinKey : ((drag && !drag.free) ? drag.k : null);
+    const sumOf = o => COLS.reduce((a, c) => a + o[c.k], 0);
+    const E = {}; COLS.forEach(c => { E[c.k] = W[c.k]; });
+    const S = sumOf(E);
+    if (S > avail && !free) {
+      for (const lim of [SOFT_MIN, MIN_W]) {
+        const need = sumOf(E) - avail; if (need <= 0) break;
+        let ex = 0; COLS.forEach(c => { if (c.k !== pin) ex += E[c.k] - Math.min(E[c.k], lim); });
+        if (ex <= 0) continue;
+        const r = Math.min(1, need / ex);
+        COLS.forEach(c => { if (c.k === pin) return; const w = E[c.k], f = Math.min(w, lim); E[c.k] = Math.max(f, Math.floor(w - (w - f) * r)); });
       }
-
-      const lv = r.live;
-      let custCell = '—', liveCell = '—';
-      if (lv && lv.notFound) {
-        liveCell = '<span class="res-badge bad" title="الأوردر مش موجود على شوبيفاي">مش موجود</span>';
-      } else if (lv) {
-        custCell = (lv.customerName || lv.customerPhone)
-          ? `${esc(lv.customerName || '—')}<span class="pd-sub">${esc(lv.customerPhone || '')}</span>` : '—';
-        const fin = FIN_AR[lv.financialStatus] || lv.financialStatus || '—';
-        liveCell = (lv.cancelled ? '<span class="res-badge bad">ملغي</span> ' : '')
-          + `<span class="res-badge ${lv.financialStatus === 'PAID' ? 'ok' : 'none'}">${esc(fin)}</span>`
-          + (lv.outstanding != null && Number(lv.outstanding) !== 0
-              ? `<span class="pd-sub">متبقي ${fmt(Number(lv.outstanding))}</span>` : '');
-      }
-
-      return `<tr>
-        <td class="col-num">${r.registeredAt ? `${formatDate(r.registeredAt)} ${formatTimeOnly(r.registeredAt)}` : '—'}</td>
-        <td>${esc(empNames[r.registeredBy] || r.registeredBy || '—')}</td>
-        <td class="col-num">${orderLink(r.orderName, r.orderId)}${r.registrations > 1 ? `<span class="pd-sub">اتسجّل ${r.registrations} مرات</span>` : ''}</td>
-        <td class="col-num">${r.amount != null ? fmt(Number(r.amount)) : '—'}</td>
-        <td>${r.courier ? esc(r.courier) : '—'}</td>
-        <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
-        <td><span class="res-badge ${st.cls}" title="${esc(st.hint)}">${st.label}</span></td>
-        <td class="col-num">${collCell}</td>
-        <td class="pd-cust">${custCell}</td>
-        <td>${liveCell}</td>
-      </tr>`;
-    }).join('');
+      if (sumOf(E) > avail) COLS.forEach(c => { E[c.k] = W[c.k]; });   // مش هيتّسع حتى بأقل عرض → المفضّل + سكرول
+    } else if (S < avail) {
+      const others = COLS.filter(c => c.k !== pin), target = avail - (pin ? W[pin] : 0), so = others.reduce((a, c) => a + W[c.k], 0), f = target / so;
+      others.forEach(c => { E[c.k] = Math.floor(W[c.k] * f); });
+      E[others[others.length - 1].k] += target - others.reduce((a, c) => a + E[c.k], 0);   // باقي القسمة
+    }
+    return { E, sum: sumOf(E) };
   }
+  function applyW() {
+    if (!wReady) return;
+    const avail = availW(); if (avail <= 0) return;
+    const { E, sum } = effective(avail);
+    document.querySelectorAll('#pdCg col').forEach(col => { col.style.width = E[col.dataset.c] + 'px'; });
+    tbl().style.width = sum + 'px';
+  }
+  function fitWidth(i) {   // أطول محتوى في العمود (nowrap) + 16px
+    const t = tbl(), had = t.classList.contains('measuring'); t.classList.add('measuring');
+    let w = t.querySelectorAll('thead th')[i].querySelector('.th-in').getBoundingClientRect().width + 16;
+    t.querySelectorAll('tbody tr').forEach(tr => {
+      const td = tr.children[i]; if (!td || td.classList.contains('empty-row') || td.colSpan > 1) return;
+      const rg = document.createRange(); rg.selectNodeContents(td);
+      w = Math.max(w, rg.getBoundingClientRect().width + 16);
+    });
+    if (!had) t.classList.remove('measuring');
+    return w;
+  }
+  function initW() {
+    if (wReady || availW() <= 0) return;   // التاب مخفي → ننتظر أول ظهور (ensureW من pdOnShow)
+    const t = tbl(); let saved = loadW();
+    t.classList.add('auto', 'measuring'); t.style.width = '';
+    document.querySelectorAll('#pdCg col').forEach(c => { c.style.width = ''; });
+    const nat = {};
+    t.querySelectorAll('thead th').forEach(th => { nat[th.dataset.col] = Math.min(INIT_CAP, Math.max(MIN_W, Math.round(th.getBoundingClientRect().width))); });
+    const avail = availW();
+    if (saved && COLS.reduce((a, c) => a + saved[c.k], 0) > Math.max(2 * avail, 2000)) saved = null;   // محفوظ منفوخ → قياس جديد
+    COLS.forEach(c => { W[c.k] = saved ? saved[c.k] : nat[c.k]; });
+    t.classList.remove('auto', 'measuring');
+    wReady = true; applyW(); watchW();
+  }
+  function ensureW() { (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(initW); }
+  function watchW() {   // أي تغيّر في عرض الكارت (ريسايز · سكرول عمودي · طي/فتح) ← إعادة حساب
+    const sc = Q('#pdScroll'); if (!sc) return;
+    const kick = () => { if (!wRaf) wRaf = requestAnimationFrame(() => { wRaf = 0; applyW(); }); };
+    if (typeof ResizeObserver !== 'undefined') new ResizeObserver(kick).observe(sc);
+    window.addEventListener('resize', kick);
+  }
+  function showWBadge(txt) { if (!wBadge) { wBadge = document.createElement('div'); wBadge.className = 'w-badge tbx'; document.body.appendChild(wBadge); } wBadge.textContent = txt; }
+  function hideWBadge() { if (wBadge) wBadge.remove(); wBadge = null; }
+  function bake(pin) { const { E } = effective(availW(), pin); COLS.forEach(c => { W[c.k] = E[c.k]; }); }   // المعروض فعلًا يبقى هو المفضّل
+  function capFor(k) {   // أقصى عرض للعمود k: الباقي بيتضغط لحد SOFT_MIN
+    let floors = 0; COLS.forEach(c => { if (c.k !== k) floors += Math.min(W[c.k], SOFT_MIN); });
+    const room = availW() - floors;
+    return room < W[k] ? { cap: MAX_W, free: true } : { cap: Math.min(MAX_W, room), free: false };
+  }
+  document.addEventListener('pointerdown', e => {
+    const h = e.target.closest && e.target.closest('#pdHead [data-rz]'); if (!h || !wReady) return;
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault(); e.stopPropagation(); closePop(); hideTip();
+    const k = h.dataset.rz, prev = Object.assign({}, W);
+    bake(null); const c = capFor(k);
+    drag = { k, prev, moved: false, x: e.clientX, w: W[k], cap: c.cap, free: c.free, sign: getComputedStyle(tbl()).direction === 'rtl' ? -1 : 1, h };
+    try { h.setPointerCapture(e.pointerId); } catch (_) {}
+    h.classList.add('active'); document.body.classList.add('col-resizing');
+    const col = document.querySelector(`#pdCg col[data-c="${k}"]`); if (col) col.classList.add('hl');
+    showWBadge(W[k] + ' px');
+  });
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const raw = Math.round(drag.w + drag.sign * (e.clientX - drag.x));   // RTL: السحب لليسار = توسيع
+    drag.moved = true;
+    W[drag.k] = Math.max(MIN_W, Math.min(drag.cap, raw));
+    applyW(); showWBadge(W[drag.k] + ' px' + (raw > drag.cap && !drag.free ? ' · أقصى مساحة متاحة' : ''));
+  });
+  function endDrag() {
+    if (!drag) return;
+    drag.h.classList.remove('active'); document.body.classList.remove('col-resizing');
+    document.querySelectorAll('#pdCg col.hl').forEach(c => c.classList.remove('hl'));
+    if (drag.moved) bake(drag.k); else Object.assign(W, drag.prev);   // كليك من غير سحب ما يغيّرش حاجة
+    drag = null; hideWBadge(); applyW(); saveW();
+  }
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+  function fitCol(k) {   // دبل كليك = ضبط تلقائي على أطول محتوى (في حدود المساحة المتاحة)
+    const i = COLS.findIndex(c => c.k === k); if (i < 0 || !wReady) return;
+    const want = Math.max(MIN_W, Math.min(MAX_W, Math.ceil(fitWidth(i))));
+    bake(null); const c = capFor(k);
+    W[k] = Math.max(MIN_W, Math.min(c.cap, want));
+    bake(k); applyW(); saveW();
+    if (want > c.cap && !c.free) showToast('العمود وصل لأقصى مساحة متاحة في الكارت', 'neutral');
+  }
+  document.addEventListener('dblclick', e => { const h = e.target.closest && e.target.closest('#pdHead [data-rz]'); if (h) fitCol(h.dataset.rz); });
 
-  function pdRenderPager() {
-    const pages = Math.max(1, Math.ceil(pdTotal / PD_PAGE_SIZE));
-    $('pdPager').style.display = pages > 1 ? '' : 'none';
-    $('pdPageInfo').textContent = `صفحة ${pdPage} من ${pages}`;
-    $('pdPrev').disabled = pdPage <= 1;
-    $('pdNext').disabled = pdPage >= pages;
+  // ── واجهة التاب (بتتنادى من §TABS-JS وشاشة الخروج) ──────────────
+  function onShow() {
+    if (!loadedOnce && currentEmployee) fetchNow();
+    else if (!wReady && data) ensureW();
+    else applyW();
   }
-  function pdGoPage(dir) {
-    const pages = Math.max(1, Math.ceil(pdTotal / PD_PAGE_SIZE));
-    const next = pdPage + dir;
-    if (next < 1 || next > pages) return;
-    pdPage = next; pdFetch();
+  function reset() {
+    clearTimeout(fetchTimer); reqId++;
+    data = null; pageNo = 1; loadedOnce = false;
+    MS_KEYS.forEach(k => st.ms[k].clear());
+    st.num.amount = { from: '', to: '' }; st.q.orderNo = ''; st.tok.orderNo = [];
+    DATE_KEYS.forEach(resetDate); TIME_KEYS.forEach(resetTm); st.sort = { key: null, dir: null };
+    closePop(); hideTip();
+    Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>`;
+    Q('#pdCount').textContent = '—'; Q('#pdUpd').textContent = '';
+    Q('#pdPager').style.display = 'none'; Q('#pdWarn').style.display = 'none';
+    renderChips(); updateStates();
   }
+  buildHead(); renderChips(); updateStates();
+  return { onShow, closePop, reset };
+  })();
 
   // ── Init ──────────────────────────────────────────────────────
   renderVersionUI();
@@ -2871,7 +3529,6 @@
   loadEmployeesList();
   msRenderList('emp');
   renderChips();
-  pdRenderChips();
   updateFilterIconState();
   updateSortHeaderUI();
   buildTabChipMenu();
