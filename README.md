@@ -11,7 +11,7 @@
 |---|---|
 | الواجهة | https://ecommoda-dev.github.io/COD-Pre-Register-Payment/ |
 | الـ Worker | https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev |
-| الإصدار | Worker `v2.4.0` · الواجهة `v2.3.2` |
+| الإصدار | Worker `v2.5.0` · الواجهة `v2.4.0` |
 
 ## بنية الريبو
 

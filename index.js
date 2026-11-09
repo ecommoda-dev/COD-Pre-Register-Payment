@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.4.1 — الطبقة ٥: الحارس الديناميكي لقيم اللوج)
+ * cod-pre-register-payment-worker  (v2.5.0 — تاب المعلّقة والمحصّلة: pending_details)
  *
  * skills: ecommoda-worker-builder v3.7.1 · ecommoda-constants v3.1.0 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -16,6 +16,7 @@
  *   preview        – fetch order data (+ بيانات العميل للعرض فقط) + فحص KV
  *   preRegister    – mark as paid on Shopify + save KV + set metafield + D1 log
  *   checkPending / clearPending / listPending — API لـ cod-payment-center-worker
+ *   pending_details – (GET · قراءة بس) KV + D1 (تسجيل + تحصيل) + شوبيفاي الحية لكل الأوردرات المسجّلة مسبقًا
  *   check_employee / register_pin / verify_employee / log_logout / get_employees — Universal D1 Auth
  *   get_logs / get_logs_count / get_logs_export — tool=cod_preregister
  *   diag / get_config — فحص ذاتي + نسخة الـ Worker (إلزاميان لأي Worker بيكتب)
@@ -27,7 +28,7 @@
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.4.1';
+const WORKER_VERSION = '2.5.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -535,6 +536,217 @@ async function setPreRegMetafield(token, env, numericId) {
 }
 
 // ══════════════════════════════════════════════════════
+// §PENDING-DETAILS — تاب «المعلّقة والمحصّلة» (v2.5.0)
+// ══════════════════════════════════════════════════════
+// قراءة بس — مفيش كتابة في KV ولا D1 ولا شوبيفاي. ما بيلمسش checkPending/
+// clearPending/listPending (عقد مع cod-payment-center-worker).
+//
+// المصادر التلاتة:
+//   • KV       — مين لسه معلّق دلوقتي (مفتاح preReg:<id> موجود)
+//   • D1       — tool=cod_preregister/preregister: مين سجّل ومتى وبكام
+//                tool=cod_payment/payment (أداة التحصيل): اتحصّل ولا لأ
+//   • شوبيفاي — الحالة الحية + بيانات العميل **للعرض فقط** (نداء nodes واحد)
+//
+// ⛔ بيانات العميل بتتحط في رد الـ endpoint ده بس — ممنوع تدخل writeLog/extra.
+const PAYMENT_TOOL         = 'cod_payment';   // لوج أداة التحصيل — بنقراه بس
+const PENDING_DETAILS_CAP  = 2000;            // سقف صفوف التسجيل المسبق في الاستعلام
+const PENDING_ORPHAN_CAP   = 200;             // سقف قراءة مفاتيح KV اللي مالهاش صف في D1
+const PD_STATUSES = ['pending', 'collected', 'stale', 'cleared', 'kv_only'];
+
+// D1 بيسمح بـ ١٠٠ باراميتر بس في الاستعلام الواحد — القوايم الطويلة بتتقسّم.
+function chunkArray(arr, n = 50) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
+  return out;
+}
+function safeJSON(s) { try { return s ? JSON.parse(s) : {}; } catch { return {}; } }
+
+async function listKvPendingIds(kv) {
+  const ids = new Set();
+  let cursor, complete = false;
+  for (let page = 0; page < 20; page++) {
+    const l = await kv.list({ prefix: 'preReg:', cursor });
+    (l.keys || []).forEach(k => ids.add(k.name.slice('preReg:'.length)));
+    if (l.list_complete || !l.cursor) { complete = true; break; }
+    cursor = l.cursor;
+  }
+  return { ids, complete };
+}
+
+// الحالة الحية من شوبيفاي — نداء nodes واحد للصفحة كلها (≤100 أوردر).
+// بترمي عند الفشل؛ اللي بينادي بيلقطها ويكمّل من غيرها.
+async function getOrdersLiveState(env, orderIds) {
+  assertEnv(env, 'shopify');
+  const token = await getAccessToken(env);
+  const query = `
+    query liveState($ids: [ID!]!) {
+      nodes(ids: $ids) {
+        ... on Order {
+          id displayFinancialStatus cancelledAt phone
+          customer { displayName phone }
+          shippingAddress { name phone }
+          totalOutstandingSet { shopMoney { amount } }
+        }
+      }
+    }
+  `;
+  const data = await shopifyGQL(env, token, query,
+    { ids: orderIds.map(id => `gid://shopify/Order/${id}`) }, 'liveState');
+  const out = {};
+  for (const n of (data?.data?.nodes || [])) {
+    if (!n || !n.id) continue;
+    out[n.id.replace('gid://shopify/Order/', '')] = {
+      financialStatus: n.displayFinancialStatus || null,
+      cancelled:       !!n.cancelledAt,
+      outstanding:     n.totalOutstandingSet?.shopMoney?.amount ?? null,
+      customerName:    n.customer?.displayName || n.shippingAddress?.name || null,
+      customerPhone:   n.shippingAddress?.phone || n.customer?.phone || n.phone || null,
+    };
+  }
+  return out;
+}
+
+async function buildPendingDetails(env, p) {
+  // ── ١) المصادر الأساسية بالتوازي ────────────────────────────────
+  const { sql, b } = buildLogFilterSQL(
+    'SELECT id, order_id, order_name, timestamp, employee, value_after',
+    { tool: TOOL_NAME, types: ['preregister'], employees: p.employees,
+      search: p.search, dateFrom: p.dateFrom, dateTo: p.dateTo });
+
+  const [kv, regRes, allRegRes] = await Promise.all([
+    listKvPendingIds(env.PRE_REG_KV),
+    env.DB.prepare(`${sql} ORDER BY timestamp DESC LIMIT ?`).bind(...b, PENDING_DETAILS_CAP + 1).all(),
+    // كل أوردرات التسجيل المسبق **بدون فلاتر** — عشان مفتاح KV يتحسب «يتيم» بس
+    // لو ملوش صف في D1 أصلاً، مش لو الفلتر استبعد صفه.
+    env.DB.prepare(`SELECT DISTINCT order_id FROM logs WHERE tool = ? AND type = 'preregister' AND order_id IS NOT NULL`)
+      .bind(TOOL_NAME).all(),
+  ]);
+
+  let regRows = regRes.results || [];
+  const truncated = regRows.length > PENDING_DETAILS_CAP;
+  if (truncated) regRows = regRows.slice(0, PENDING_DETAILS_CAP);
+
+  // نفس الأوردر مسجّل أكتر من مرة؟ بنعرض الأحدث ونعدّ المرات.
+  const byOrder = new Map();
+  for (const r of regRows) {
+    if (!r.order_id) continue;
+    const prev = byOrder.get(r.order_id);
+    if (prev) prev.registrations += 1;
+    else byOrder.set(r.order_id, { ...r, registrations: 1 });
+  }
+
+  // ── ٢) اتحصّل ولا لأ؟ — صف payment في لوج أداة التحصيل بعد وقت التسجيل ──
+  const collectedAt = new Map();
+  if (byOrder.size) {
+    const minTs = regRows[regRows.length - 1].timestamp;
+    const col = await env.DB.prepare(`
+      SELECT order_id, MAX(timestamp) AS collected_at FROM logs
+      WHERE tool = ? AND type = 'payment' AND timestamp >= ?
+        AND order_id IN (SELECT order_id FROM logs WHERE tool = ? AND type = 'preregister')
+      GROUP BY order_id
+    `).bind(PAYMENT_TOOL, minTs, TOOL_NAME).all();
+    for (const r of (col.results || [])) collectedAt.set(r.order_id, r.collected_at);
+  }
+
+  const items = [];
+  for (const r of byOrder.values()) {
+    const inKV = kv.ids.has(r.order_id);
+    const col  = collectedAt.get(r.order_id);
+    const collected = !!col && col >= r.timestamp;
+    items.push({
+      orderId: r.order_id, orderName: r.order_name, rowId: r.id,
+      registeredAt: r.timestamp, registeredBy: r.employee || null,
+      amount: r.value_after, registrations: r.registrations, inKV,
+      status: inKV ? (collected ? 'stale' : 'pending') : (collected ? 'collected' : 'cleared'),
+    });
+  }
+
+  // ── ٣) مفاتيح KV من غير صف تسجيل في D1 (مثلاً backlog بوسطة) ──────
+  // التفاصيل (الاسم/الوقت) في قيمة المفتاح نفسها، فبنقراها — بسقف. فلتر الموظف
+  // بيستبعدها لأن مفيش موظف مسجّل ليها.
+  const allReg = new Set((allRegRes.results || []).map(r => r.order_id));
+  const orphanIds = [...kv.ids].filter(id => !allReg.has(id));
+  let orphansTruncated = false;
+  if (orphanIds.length && !(p.employees && p.employees.length)) {
+    const slice = orphanIds.slice(0, PENDING_ORPHAN_CAP);
+    orphansTruncated = orphanIds.length > slice.length;
+    const q = (p.search || '').toLowerCase();
+    const vals = await Promise.all(slice.map(async id => [id, safeJSON(await env.PRE_REG_KV.get(`preReg:${id}`))]));
+    for (const [id, e] of vals) {
+      const day = (e.preRegisteredAt || '').slice(0, 10);
+      if (q && !(String(e.orderName || '').toLowerCase().includes(q) || id.includes(q))) continue;
+      if (p.dateFrom && !(day && day >= p.dateFrom)) continue;
+      if (p.dateTo   && !(day && day <= p.dateTo))   continue;
+      items.push({
+        orderId: id, orderName: e.orderName || null, rowId: null,
+        registeredAt: e.preRegisteredAt || null, registeredBy: null,
+        amount: e.amount != null ? Number(e.amount) : null, registrations: 0, inKV: true,
+        status: 'kv_only',
+        _kv: e,
+      });
+    }
+  }
+
+  // ── ٤) عدّادات الحالات (قبل فلتر الحالة) + الفلترة + الصفحة ────────
+  items.sort((a, b2) => String(b2.registeredAt || '').localeCompare(String(a.registeredAt || '')));
+  const counts = { all: items.length };
+  PD_STATUSES.forEach(s => { counts[s] = 0; });
+  items.forEach(i => { counts[i.status] += 1; });
+
+  const filtered = p.statuses && p.statuses.length ? items.filter(i => p.statuses.includes(i.status)) : items;
+  const page = filtered.slice(p.offset, p.offset + p.limit);
+
+  // ── ٥) تفاصيل الصفحة بس: D1 (المنتجات/المندوب) + التحصيل + شوبيفاي ──
+  const regDetail = new Map();   // rowId → extra
+  for (const ch of chunkArray(page.filter(i => i.rowId).map(i => i.rowId))) {
+    const r = await env.DB.prepare(`SELECT id, extra FROM logs WHERE id IN (${ch.map(() => '?').join(',')})`)
+      .bind(...ch).all();
+    for (const row of (r.results || [])) regDetail.set(row.id, safeJSON(row.extra));
+  }
+
+  const collDetail = new Map();  // order_id → آخر صف تحصيل بعد وقت التسجيل
+  const needColl = page.filter(i => i.status === 'collected' || i.status === 'stale');
+  for (const ch of chunkArray(needColl.map(i => i.orderId))) {
+    const r = await env.DB.prepare(`
+      SELECT order_id, timestamp, employee, value_after, extra FROM logs
+      WHERE tool = '${PAYMENT_TOOL}' AND type = 'payment' AND order_id IN (${ch.map(() => '?').join(',')})
+      ORDER BY timestamp DESC
+    `).bind(...ch).all();
+    for (const row of (r.results || [])) if (!collDetail.has(row.order_id)) collDetail.set(row.order_id, row);
+  }
+
+  let live = {}, shopify = { ok: true };
+  if (page.length) {
+    try { live = await getOrdersLiveState(env, page.map(i => i.orderId)); }
+    catch (e) { shopify = { ok: false, error: e.message }; }
+  }
+
+  const rows = page.map(i => {
+    const ex = i.rowId ? (regDetail.get(i.rowId) || {}) : (i._kv || {});
+    const c  = collDetail.get(i.orderId);
+    const cx = c ? safeJSON(c.extra) : null;
+    return {
+      orderId: i.orderId, orderName: i.orderName, status: i.status, inKV: i.inKV,
+      registeredAt: i.registeredAt, registeredBy: i.registeredBy,
+      amount: i.amount, registrations: i.registrations,
+      courier: ex.courier || null, lineItems: ex.lineItems || [],
+      transactionId: ex.transactionId || null, result: ex.result || null,
+      collection: c ? {
+        at: c.timestamp, by: c.employee || null, amount: c.value_after,
+        courier: cx.courier || null, paymentMethods: cx.paymentMethods || null,
+      } : null,
+      live: shopify.ok ? (live[i.orderId] || { notFound: true }) : null,
+    };
+  });
+
+  return {
+    rows, total: filtered.length, counts,
+    cap: PENDING_DETAILS_CAP, truncated, orphansTruncated, kvComplete: kv.complete,
+    shopify,
+  };
+}
+
+// ══════════════════════════════════════════════════════
 // §HANDLER
 // ══════════════════════════════════════════════════════
 export default {
@@ -715,6 +927,24 @@ export default {
           if (raw) entries[k.name.replace('preReg:', '')] = JSON.parse(raw);
         }));
         return json({ success: true, entries }, 200, request);
+      }
+
+      // ── pending_details — تاب «المعلّقة والمحصّلة» في الواجهة ─────
+      // GET · قراءة بس. endpoint **منفصل** عن listPending (شكل ردّه مقفول).
+      // الحارس هنا جوّه الـ endpoint — مش سطر عام (انظر فخ v2.0.0 تحت).
+      if (action === 'pending_details') {
+        assertEnv(env);   // DB + PRE_REG_KV بس — شوبيفاي بيتفحص جوّه وبيتحمّل فشله
+        const csv = (k) => (url.searchParams.get(k) || '').split(',').map(s => s.trim()).filter(Boolean);
+        const result = await buildPendingDetails(env, {
+          statuses:  csv('statuses').filter(s => PD_STATUSES.includes(s)),
+          employees: csv('employees'),
+          search:    url.searchParams.get('search')   || null,
+          dateFrom:  url.searchParams.get('dateFrom') || null,
+          dateTo:    url.searchParams.get('dateTo')   || null,
+          limit:     Math.min(Math.max(parseInt(url.searchParams.get('limit')  || '100') || 100, 1), 100),
+          offset:    Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0),
+        });
+        return json({ ok: true, ...result }, 200, request);
       }
 
       // ⛔ endpoint الترحيل المؤقت `import_pending_kv` اتشال في v2.3.0 —
