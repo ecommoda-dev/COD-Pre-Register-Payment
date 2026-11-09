@@ -7,7 +7,7 @@
 **بتعمل إيه:** الموظف بيسجّل دفع أوردر COD مسبقًا على شوبيفاي (capture transaction)
 قبل التحصيل الفعلي من المندوب، وبيتحطّ مفتاح "معلّق" في KV لحد ما التحصيل يتم.
 **مين بيستخدمها:** حسابات · تحصيل COD
-**الإصدار:** Worker `v2.4.0` · الواجهة `v2.3.2`   ← الاتنين مستقلين، طبيعي يختلفوا
+**الإصدار:** Worker `v2.5.0` · الواجهة `v2.4.0`   ← الاتنين مستقلين، طبيعي يختلفوا
 
 ## الروابط
 
@@ -27,6 +27,7 @@
 | `checkPending` / `clearPending` / `listPending` | **API داخلي لـ `cod-payment-center-worker` — شكل الرد مقفول، ممنوع تغييره** |
 | `check_employee` / `register_pin` / `verify_employee` / `log_logout` / `get_employees` | Universal D1 Auth |
 | `get_logs` / `get_logs_count` / `get_logs_export` | سجل العمليات — فلترة (`employees` · `search` · `dateFrom`/`dateTo`) وترتيب (`sortKey`/`sortDir`) وصفحات، كلهم server-side. التصدير بيرجّع `cap`/`total`/`truncated` |
+| `pending_details` | تاب «المعلّقة والمحصّلة» — **GET · قراءة بس.** KV + D1 (التسجيل + التحصيل) + شوبيفاي الحية بنداء `nodes` واحد. فلترة (`statuses` · `employees` · `search` · `dateFrom`/`dateTo`) وصفحات (≤100) server-side. endpoint **منفصل** عن `listPending` (شكل ردّه مقفول) |
 | `diag` / `get_config` | فحص ذاتي + نسخة الـ Worker |
 
 ## D1
@@ -133,6 +134,34 @@ Exclude paths : (فاضي)
 ⚠️ والحقل ده **chips مش نص**: `index.js wrangler.toml` بمسافة = chip واحد
 بالاسم ده حرفيًا = **مفيش أي push هيبني تاني، للأبد، في صمت**.
 
+## تاب «المعلّقة والمحصّلة» (`pending_details`)
+
+```
+المصادر : KV (معلّق دلوقتي) · D1 cod_preregister/preregister (مين/متى/بكام)
+          · D1 cod_payment/payment (لوج أداة التحصيل — بنقراه بس) · شوبيفاي nodes(ids)
+الحالات : pending · collected · stale · cleared · kv_only
+السقف   : ٢٠٠٠ تسجيل (PENDING_DETAILS_CAP) — لو اتجاوز: truncated + تنبيه في الواجهة
+التصدير : مفيش (قرار 09-11-2026)
+```
+
+| الحالة | المعنى |
+|---|---|
+| `pending` | المفتاح في KV ومفيش صف تحصيل بعد وقت التسجيل |
+| `collected` | المفتاح اتمسح وفيه صف `cod_payment/payment` بعد وقت التسجيل |
+| `stale` | **اتحصّل فعلاً والمفتاح لسه في KV** (`clearPendingPreReg` بيبلع أي فشل في المسح) |
+| `cleared` | المفتاح مش في KV ومفيش تحصيل مسجّل — اتمسح/اتحصّل بطريق مش بيكتب لوج/اتلغى. **مش «اتحصّل»** |
+| `kv_only` | مفتاح KV مالوش صف تسجيل في D1 (مثلاً backlog بوسطة) — مقروء من قيمة المفتاح، بسقف ٢٠٠ |
+
+- ⚠️ **بيعتمد على شكل لوج أداة تانية:** `tool='cod_payment' AND type='payment'` + `order_id`.
+  لو `cod-payment-center-worker` غيّر القيمتين دول، `collected` بتتحوّل لـ `cleared` **من غير أي خطأ**.
+- **حد D1: ١٠٠ باراميتر في الاستعلام** — أي `IN (...)` على قايمة بييجي عبر `chunkArray()` (٥٠).
+  استعلام «اتحصّل ولا لأ» بيستخدم subquery مش قايمة باراميترات.
+- **فشل شوبيفاي مش بيوقّع الـ endpoint:** بيرجّع `shopify: { ok:false, error }` والصفوف من KV+D1.
+  (عكس `preview` اللي بيفشل كله مع `ACCESS_DENIED`.)
+- ⛔ **بيانات العميل في رد الـ endpoint ده بس** — ممنوع `writeLog`/`extra`/تصدير (نفس قاعدة `preview`).
+- الحالة بتتحسب على **كل** الصفوف قبل الصفحات (الفلتر والعدّادات صح)، والتفاصيل والنداء لشوبيفاي على الصفحة المعروضة بس.
+- نفس الأوردر مسجّل أكتر من مرة: بيتعرض الأحدث بس مع «اتسجّل N مرات».
+
 ## فخاخ الأداة دي
 
 - 🔴 **حارس عام في نص الـ handler بيبلع كل اللي بعده.** سطر
@@ -189,7 +218,7 @@ git show b3f7906:index.js
 | ecommoda-constants | v3.1.0 |
 | shopify-graphql-helper | v1.0.0 |
 
-آخر مطابقة: 24-09-2026 · `index.js` v2.4.1 · `index.html` v2.3.2
+آخر مطابقة: 09-11-2026 · `index.js` v2.5.0 · `index.html` v2.4.0
 
 🔴 معلّقة: — لا شيء
 
@@ -218,6 +247,7 @@ git show b3f7906:index.js
 ```
 📋 تسجيل الدفع    ← الاستعلام + كارت الأوردر + زرار التسجيل + النتيجة
 📜 سجل العمليات   ← القسم الموحّد (فلاتر + جدول)
+⏳ المعلّقة والمحصّلة ← كل الأوردرات المسجّلة مسبقًا بحالتها (بدون تصدير)
 ```
 
 `.main-tabs-bar` / `.main-tab-btn` + **Freeze on Scroll**: الهيدر بيتقفل مضغوط
@@ -226,7 +256,7 @@ git show b3f7906:index.js
 `requestAnimationFrame` — العتبة الواحدة، وكمان العتبتين برقمين ثابتين، بيعملوا
 فليكر عالق عند نقطة القفل (باج متحقَّق، `tabs-and-modals.md` §1b).
 
-**السجل lazy** — `get_logs` مابيتنداش غير أول ما الموظف يفتح تاب السجل فعلاً.
+**السجل وتاب المعلّقة lazy** — `get_logs` و`pending_details` مابيتندوش غير أول ما الموظف يفتح التاب فعلاً.
 
 ## تقارير خارجة عن الأداة
 

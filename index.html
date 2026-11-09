@@ -476,6 +476,21 @@
   .res-badge.ok   {background:var(--success-bg);color:var(--success);border:1px solid var(--success-border);}
   .res-badge.warn {background:var(--gold-bg);color:var(--gold);border:1px solid #fde68a;}
   .res-badge.none {background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border);}
+  .res-badge.bad  {background:var(--red-light);color:var(--red);border:1px solid var(--red-border);}
+  .res-badge.info {background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border);}
+
+  /* ── تاب «المعلّقة والمحصّلة» — chips فلتر الحالة (multi-select، بلا اختيار = الكل) ── */
+  .pd-status-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .pd-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;border:1px solid var(--border-strong);
+    background:var(--surface);font-family:var(--font);font-size:12px;font-weight:700;color:var(--text-secondary);cursor:pointer;
+    transition:background .15s,border-color .15s,color .15s;}
+  .pd-chip:hover{border-color:var(--accent);color:var(--accent);}
+  .pd-chip.on{background:var(--accent-light);border-color:var(--accent);color:var(--accent);}
+  .pd-chip .pd-n{font-family:var(--mono);font-size:11px;opacity:.8;}
+  .pd-sel{height:34px;min-width:170px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:0 8px;
+    font-family:var(--font);font-size:13px;background:var(--surface);color:var(--text-primary);}
+  .pd-sub{display:block;font-size:11px;color:var(--text-muted);font-weight:600;}
+  .pd-cust{white-space:nowrap;}
 
   /* ── رقم الأوردر = هايبر لينك لشوبيفاي ── */
   .order-link { color: var(--purple); font-family: var(--mono); font-weight: 700; text-decoration: none; border-bottom: 1px dashed var(--purple-border); }
@@ -747,6 +762,7 @@
   <div class="main-tabs-bar" id="mainTabsBar">
     <button class="main-tab-btn active" id="tabMain" onclick="switchMainTab('main')">📋 تسجيل الدفع</button>
     <button class="main-tab-btn"        id="tabLog"  onclick="switchMainTab('log')">📜 سجل العمليات</button>
+    <button class="main-tab-btn"        id="tabPending" onclick="switchMainTab('pending')">⏳ المعلّقة والمحصّلة</button>
   </div>
 
   </div>
@@ -998,6 +1014,94 @@
   </div>
   <!-- /panelLog -->
 
+  <!-- ══ PANEL: المعلّقة والمحصّلة ══ -->
+  <div class="tab-panel" id="panelPending">
+
+  <!-- ══════════════════════════════════════════════════════
+       §PENDING — كل الأوردرات المسجّلة مسبقًا: معلّق / اتحصّل / مفتاح عالق / اتمسح.
+       المصدر: KV (معلّق دلوقتي) + D1 (التسجيل + التحصيل) + شوبيفاي (حالة حية، نداء واحد).
+       الفلترة والعدّ والصفحات server-side (نفس منطق السجل) — بدون تصدير.
+       ⛔ بيانات العميل للعرض فقط — مش بتتخزّن ولا بتتصدّر.
+       ══════════════════════════════════════════════════════ -->
+  <div class="unified-section">
+
+    <div class="flt-header" style="cursor:default;">
+      <div class="flt-header-right"><span style="font-weight:700;">⏳ المعلّقة والمحصّلة</span></div>
+      <button class="clear-btn inactive" id="pdClearBtn" onclick="pdClearFilters()">✕ مسح كل الفلاتر</button>
+    </div>
+
+    <div class="flt-body">
+      <div class="pd-status-row" id="pdStatusRow"></div>
+
+      <div class="flt-row">
+        <div class="flt-g" style="min-width:240px;">
+          <span class="flt-label">بحث برقم الأوردر</span>
+          <div class="search-wrap">
+            <input type="text" class="search-input" id="pdSearch" oninput="pdOnSearch(this)">
+            <span class="search-icon">🔍</span>
+          </div>
+        </div>
+        <div class="flt-g">
+          <span class="flt-label">من تاريخ التسجيل</span>
+          <div class="range-date-wrap"><input type="date" id="pdDateFrom" onclick="this.showPicker&&this.showPicker();" onchange="pdOnFilter()"></div>
+        </div>
+        <div class="flt-g">
+          <span class="flt-label">إلى تاريخ</span>
+          <div class="range-date-wrap"><input type="date" id="pdDateTo" onclick="this.showPicker&&this.showPicker();" onchange="pdOnFilter()"></div>
+        </div>
+        <div class="flt-g">
+          <span class="flt-label">الموظف</span>
+          <select class="pd-sel" id="pdEmp" onchange="pdOnFilter()"><option value="">كل الموظفين</option></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider"></div>
+
+    <div class="tbl-bar" style="cursor:default;">
+      <div class="tbl-bar-right">
+        <div class="results-wrap">
+          <span class="results-label">النتائج:</span>
+          <span class="results-count" id="pdCount">—</span>
+        </div>
+      </div>
+      <div class="tbl-bar-left">
+        <button class="act-btn refresh" onclick="pdRefresh()">↺ تحديث</button>
+      </div>
+    </div>
+
+    <div class="tbl-body-wrap">
+      <div id="pdWarn" class="export-warn" style="display:none;margin:12px 16px 0;"></div>
+      <div class="tbl-scroll">
+        <table class="data-table">
+          <thead><tr>
+            <th>التسجيل</th>
+            <th>الموظف</th>
+            <th>رقم الأوردر</th>
+            <th>المبلغ (EGP)</th>
+            <th>المندوب</th>
+            <th>المنتجات</th>
+            <th>الحالة</th>
+            <th>التحصيل</th>
+            <th>العميل</th>
+            <th>شوبيفاي الآن</th>
+          </tr></thead>
+          <tbody id="pdBody">
+            <tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-row" id="pdPager" style="display:none;">
+        <button class="page-btn" id="pdPrev" onclick="pdGoPage(-1)">→ السابق</button>
+        <span class="page-info" id="pdPageInfo"></span>
+        <button class="page-btn" id="pdNext" onclick="pdGoPage(1)">التالي ←</button>
+      </div>
+    </div>
+
+  </div>
+  </div>
+  <!-- /panelPending -->
+
 </div>
 
 <!-- ══════════════════════════════════════════════════════
@@ -1062,6 +1166,7 @@
             <tr><td><code>preRegister</code></td><td>تسجيل الدفع + KV + ميتافيلد + D1</td></tr>
             <tr><td><code>checkPending / clearPending / listPending</code></td><td>API داخلي لـ cod-payment-center-worker</td></tr>
             <tr><td><code>get_logs / get_logs_count</code></td><td>سجل التسجيلات — فلترة (<code>employees</code> · <code>search</code> · <code>dateFrom/dateTo</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلهم server-side</td></tr>
+            <tr><td><code>pending_details</code></td><td>تاب «المعلّقة والمحصّلة» — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية بنداء واحد. قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>search</code> · <code>dateFrom/dateTo</code>) وصفحات server-side</td></tr>
             <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
             <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
             <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
@@ -1086,6 +1191,7 @@
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
             <li><code>§TABS-JS</code> — <code>switchMainTab</code> (lazy load للسجل) · <code>onPageScroll</code> بعتبتين (الباند مقيس بـ <code>measureSticky()</code>) + rAF · chip التاب الحالي</li>
             <li><code>§LOG-JS</code> — جدول السجل بالمعيار الموحّد: <code>msState</code> (فلتر الموظف) · <code>logParams()</code> (مصدر واحد للفلاتر) · <code>fetchLog()</code> (صفحة + عدّ بالتوازي) · <code>toggleSort</code> · <code>exportLogXLSX</code></li>
+            <li><code>§PENDING-JS</code> — تاب «المعلّقة والمحصّلة»: <code>pdParams()</code> (مصدر واحد للفلاتر) · <code>pdFetch()</code> · chips الحالة multi-select · lazy عند فتح التاب</li>
             <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
             <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
           </ul>
@@ -1132,7 +1238,20 @@
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.3.2</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.4.0</span>
+          <span class="cl-ver-date">09-11-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>تاب <b>«⏳ المعلّقة والمحصّلة»</b> — كل الأوردرات المسجّلة مسبقًا بحالتها: 🟡 معلّق · ✅ اتحصّل · ⚠️ اتحصّل والمفتاح عالق في KV · ❓ اتمسح بدون تحصيل مسجّل · 🗂 مفتاح KV بدون سجل. فلترة بالحالة والموظف والتاريخ والبحث برقم الأوردر، وكلها من السيرفر</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>تفاصيل الأوردر اللي اتحصّل أو اتمسح من KV بتفضل ظاهرة (من سجل D1) — التحصيل (التاريخ · الموظف · طرق الدفع) والمندوب والمنتجات، بالإضافة لحالة شوبيفاي الحية واسم العميل وتليفونه (عرض فقط — مش بيتخزّنوا ولا بيتصدّروا)</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>حالة شوبيفاي بتتجاب بنداء <b>مجمّع واحد</b> للصفحة كلها. لو فشل، التاب بيفضل شغّال من KV وD1 وبيظهر تنبيه بدل ما يتعطّل</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>سقف الاستعلام ٢٠٠٠ تسجيل — لو اتجاوز بيظهر تنبيه صريح</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.3.2</span>
           <span class="cl-ver-date">01-09-2026</span>
         </div>
         <ul class="cl-items">
@@ -1256,10 +1375,10 @@
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.3.2';
+  const TOOL_VERSION = '2.4.0';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
-  const MIN_WORKER_VERSION = '2.4.0';   // النسخة اللي فيها endpoints السجل شغّالة فعلاً
+  const MIN_WORKER_VERSION = '2.5.0';   // النسخة اللي فيها pending_details (تاب المعلّقة والمحصّلة)
 
   // الرابط مش سر — ثابت هنا بدل حقل إعدادات (html-builder Standards #28)
   const WORKER_URL = 'https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev';
@@ -1690,17 +1809,20 @@
   // §TABS-JS — التابات الرئيسية + Freeze on Scroll
   // (tabs-and-modals.md § 1 و § 1b)
   // ══════════════════════════════════════════════════════════════
-  const TAB_IDS = ['main', 'log'];
+  const TAB_IDS = ['main', 'log', 'pending'];
+  const TAB_BTN = { main: 'tabMain', log: 'tabLog', pending: 'tabPending' };
+  const TAB_PANEL = { main: 'panelMain', log: 'panelLog', pending: 'panelPending' };
   let currentTab = 'main';
 
   function switchMainTab(tab) {
     currentTab = tab;
-    $('tabMain').classList.toggle('active', tab === 'main');
-    $('tabLog') .classList.toggle('active', tab === 'log');
-    $('panelMain').classList.toggle('active', tab === 'main');
-    $('panelLog') .classList.toggle('active', tab === 'log');
-    // lazy load — السجل ما بيتسحبش من D1 غير لما الموظف يفتح التاب فعلاً
+    TAB_IDS.forEach(id => {
+      $(TAB_BTN[id]).classList.toggle('active', id === tab);
+      $(TAB_PANEL[id]).classList.toggle('active', id === tab);
+    });
+    // lazy load — السجل وتاب المعلّقة ما بيتسحبوش غير لما الموظف يفتح التاب فعلاً
     if (tab === 'log' && !logLoadedOnce && currentEmployee) refreshLog();
+    if (tab === 'pending' && !pdLoadedOnce && currentEmployee) pdRefresh();
     if (tab === 'main') setTimeout(() => $('orderInput')?.focus(), 60);
     updateTabChip();
     closeTabChipMenu();
@@ -1759,7 +1881,7 @@
 
   // ── Chip التاب الحالي ───────────────────────────────────────────
   function updateTabChip() {
-    const btn = $(currentTab === 'main' ? 'tabMain' : 'tabLog');
+    const btn = $(TAB_BTN[currentTab]);
     $('activeTabChipLabel').textContent = btn.textContent.trim();
     document.querySelectorAll('#tabChipMenu .tab-chip-item').forEach(el => {
       el.classList.toggle('active', el.dataset.tab === currentTab);
@@ -1767,7 +1889,7 @@
   }
   function buildTabChipMenu() {
     $('tabChipMenu').innerHTML = TAB_IDS.map(id => {
-      const btn = $(id === 'main' ? 'tabMain' : 'tabLog');
+      const btn = $(TAB_BTN[id]);
       return `<div class="tab-chip-item ${id === currentTab ? 'active' : ''}" data-tab="${id}"
         onclick="event.stopPropagation(); switchMainTab('${id}');">${esc(btn.textContent.trim())}</div>`;
     }).join('');
@@ -2327,6 +2449,7 @@
       // نفس القايمة بتغذّي فلتر الموظف في السجل — مفيش أسماء hardcoded
       msState.emp.items = employees.map(e => ({ value: e.username, label: e.display_name }));
       msRenderList('emp');
+      pdFillEmployees(employees);
       sel.disabled = false;
       status.className = employees.length ? 'login-status info' : 'login-status warn';
       status.textContent = employees.length ? 'اختر الموظف للمتابعة.' : 'لا يوجد موظفون نشطون.';
@@ -2523,6 +2646,7 @@
     $('orderInput').value = '';
     $('activeUserBtn').textContent = '👤 —';
     logRows = []; logTotalCount = 0; logCurrentPage = 1; logLoadedOnce = false;
+    pdReset();
     switchMainTab('main');
     clearAllFilters();
     $('tblBody').innerHTML = '<tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض السجل</td></tr>';
@@ -2553,6 +2677,193 @@
     btn.classList.toggle('missing', !isConfigured());
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // §PENDING-JS — تاب «المعلّقة والمحصّلة» (v2.4.0)
+  // action=pending_details: KV (معلّق دلوقتي) + D1 (التسجيل والتحصيل) + شوبيفاي الحية.
+  // الفلترة والعدّ والصفحات server-side، وفلتر الحالة multi-select (بلا اختيار = الكل).
+  // ⛔ اسم العميل وتليفونه بيتعرضوا بس — مفيش تخزين ولا تصدير (CLAUDE.md).
+  // ══════════════════════════════════════════════════════════════
+  const PD_PAGE_SIZE = 100;
+  const PD_STATUS = {
+    pending:   { label: '🟡 معلّق للتحصيل',          cls: 'warn', hint: 'المفتاح لسه في KV' },
+    collected: { label: '✅ اتحصّل',                 cls: 'ok',   hint: 'المفتاح اتمسح وفيه تحصيل مسجّل' },
+    stale:     { label: '⚠️ اتحصّل والمفتاح عالق',   cls: 'bad',  hint: 'اتحصّل فعلاً بس المفتاح لسه في KV' },
+    cleared:   { label: '❓ اتمسح بدون تحصيل مسجّل', cls: 'none', hint: 'المفتاح مش في KV ومفيش تحصيل في لوج أداة التحصيل' },
+    kv_only:   { label: '🗂 مفتاح KV بدون سجل',      cls: 'info', hint: 'مفتاح في KV مالوش صف تسجيل في D1' },
+  };
+  const PD_STATUS_ORDER = ['pending', 'collected', 'stale', 'cleared', 'kv_only'];
+  const FIN_AR = { PAID: 'مدفوع', PENDING: 'معلّق', PARTIALLY_PAID: 'مدفوع جزئيًا', AUTHORIZED: 'مفوَّض',
+                   REFUNDED: 'مسترد', PARTIALLY_REFUNDED: 'مسترد جزئيًا', VOIDED: 'ملغى', EXPIRED: 'منتهي' };
+
+  let pdRows = [], pdTotal = 0, pdPage = 1, pdCounts = null;
+  let pdLoadedOnce = false, pdLoading = false;
+  const pdStatuses = new Set();
+  let pdSearchTerm = '', pdSearchTimer;
+
+  function pdFillEmployees(employees) {
+    const sel = $('pdEmp'); if (!sel) return;
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">كل الموظفين</option>' + employees
+      .map(e => `<option value="${esc(e.username)}">${esc(e.display_name)}</option>`).join('');
+    sel.value = cur;
+  }
+
+  function pdParams() {
+    const p = {};
+    if (pdStatuses.size)           p.statuses  = [...pdStatuses].join(',');
+    if (pdSearchTerm.trim())       p.search    = pdSearchTerm.trim();
+    if ($('pdDateFrom').value)     p.dateFrom  = $('pdDateFrom').value;
+    if ($('pdDateTo').value)       p.dateTo    = $('pdDateTo').value;
+    if ($('pdEmp').value)          p.employees = $('pdEmp').value;
+    return p;
+  }
+  function pdAnyFilter() { return Object.keys(pdParams()).length > 0; }
+  function pdUpdateClearBtn() { $('pdClearBtn').classList.toggle('inactive', !pdAnyFilter()); }
+
+  function pdRenderChips() {
+    const c = pdCounts || {};
+    $('pdStatusRow').innerHTML = PD_STATUS_ORDER.map(k => `
+      <button class="pd-chip ${pdStatuses.has(k) ? 'on' : ''}" title="${esc(PD_STATUS[k].hint)}" onclick="pdToggleStatus('${k}')">
+        ${PD_STATUS[k].label}<span class="pd-n">${c[k] != null ? c[k] : '—'}</span>
+      </button>`).join('');
+  }
+  function pdToggleStatus(k) {
+    pdStatuses.has(k) ? pdStatuses.delete(k) : pdStatuses.add(k);
+    pdOnFilter();
+  }
+  function pdOnSearch(el) {
+    el.classList.toggle('has-value', el.value.trim().length > 0);
+    clearTimeout(pdSearchTimer);
+    pdSearchTimer = setTimeout(() => { pdSearchTerm = el.value; pdOnFilter(); }, 400);
+  }
+  function pdOnFilter() {
+    pdUpdateClearBtn(); pdRenderChips();
+    pdPage = 1;
+    if (pdLoadedOnce) pdFetch();
+  }
+  function pdClearFilters() {
+    pdStatuses.clear(); pdSearchTerm = '';
+    $('pdSearch').value = ''; $('pdSearch').classList.remove('has-value');
+    $('pdDateFrom').value = ''; $('pdDateTo').value = ''; $('pdEmp').value = '';
+    pdOnFilter();
+  }
+  function pdReset() {
+    pdRows = []; pdTotal = 0; pdPage = 1; pdCounts = null; pdLoadedOnce = false;
+    pdStatuses.clear(); pdSearchTerm = '';
+    $('pdSearch').value = ''; $('pdDateFrom').value = ''; $('pdDateTo').value = ''; $('pdEmp').value = '';
+    $('pdBody').innerHTML = '<tr class="empty-row"><td colspan="10">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>';
+    $('pdCount').textContent = '—'; $('pdPager').style.display = 'none'; $('pdWarn').style.display = 'none';
+    pdUpdateClearBtn(); pdRenderChips();
+  }
+
+  async function pdRefresh() {
+    if (!isConfigured()) { showToast('الأداة غير مضبوطة', 'error'); openSettings(); return; }
+    pdLoadedOnce = true; pdPage = 1;
+    await pdFetch();
+  }
+
+  async function pdFetch() {
+    if (pdLoading) { pdQueued = true; return; }
+    pdLoading = true;
+    const offset = (pdPage - 1) * PD_PAGE_SIZE;
+    $('pdBody').innerHTML = '<tr class="empty-row"><td colspan="10">جاري التحميل...</td></tr>';
+    try {
+      const d = await apiGet('pending_details', { ...pdParams(), limit: PD_PAGE_SIZE, offset });
+      pdRows = d.rows || []; pdTotal = d.total || 0; pdCounts = d.counts || null;
+      pdRenderChips(); pdRenderTable(); pdRenderPager(); pdRenderWarn(d);
+    } catch (err) {
+      $('pdBody').innerHTML = `<tr class="empty-row"><td colspan="10" style="color:var(--red)">فشل التحميل — ${esc(err.message)}</td></tr>`;
+      $('pdCount').textContent = '—'; $('pdPager').style.display = 'none';
+      showToast('فشل تحميل المعلّقة والمحصّلة: ' + err.message, 'error');
+    }
+    pdLoading = false;
+    // لو الفلاتر اتغيّرت أثناء التحميل، نعيد بالفلاتر الحالية بدل ما نسيب نتيجة قديمة معروضة
+    if (pdQueued) { pdQueued = false; pdFetch(); }
+  }
+  let pdQueued = false;
+
+  // تنبيهات صريحة بدل الصمت: سقف الصفوف · قراءة مفاتيح KV المقصوصة · فشل شوبيفاي
+  function pdRenderWarn(d) {
+    const w = [];
+    if (d.truncated)         w.push(`⚠️ الاستعلام وصل للسقف (${(d.cap || 2000).toLocaleString('en-US')} تسجيل) — الأقدم منه مش ظاهر. ضيّق الفترة.`);
+    if (d.orphansTruncated)  w.push('⚠️ مفاتيح KV بدون سجل كتيرة — اتعرض جزء منها بس.');
+    if (d.kvComplete === false) w.push('⚠️ قائمة مفاتيح KV ناقصة (سقف القراءة) — حالات «معلّق» ممكن تكون غير مكتملة.');
+    if (d.shopify && d.shopify.ok === false)
+      w.push(`⚠️ تعذّر جلب حالة شوبيفاي الحية وبيانات العميل — الباقي معروض من KV وD1. (${esc(d.shopify.error)})`);
+    const el = $('pdWarn');
+    el.style.display = w.length ? '' : 'none';
+    el.innerHTML = w.join('<br>');
+  }
+
+  function pdRenderTable() {
+    $('pdCount').textContent = pdTotal.toLocaleString('en-US');
+    const body = $('pdBody');
+    if (!pdRows.length) {
+      body.innerHTML = `<tr class="empty-row"><td colspan="10">${pdAnyFilter() ? 'لا توجد نتائج تطابق الفلاتر' : 'لا توجد أوردرات مسجّلة مسبقًا'}</td></tr>`;
+      return;
+    }
+    body.innerHTML = pdRows.map(r => {
+      const st = PD_STATUS[r.status] || { label: r.status, cls: 'none', hint: '' };
+      const items = r.lineItems || [];
+      const itemsPlain = items.map(li => `${li.sku} × ${li.quantity}`).join('، ');
+      const itemsCell = items.length
+        ? `<div class="items-chips">${items.map(li => `<span class="item-chip">${esc(li.sku)} × ${esc(li.quantity)}</span>`).join('')}</div>`
+        : '—';
+
+      const c = r.collection;
+      let collCell = '—';
+      if (c) {
+        const pm = c.paymentMethods || {};
+        const methods = [['cash', 'كاش'], ['instapay', 'إنستاباي'], ['wallet', 'محفظة']]
+          .filter(([k]) => Number(pm[k]) > 0).map(([k, l]) => `${l} ${fmt(Number(pm[k]))}`).join(' · ');
+        collCell = `${formatDate(c.at)} ${formatTimeOnly(c.at)}
+          <span class="pd-sub">${esc(empNames[c.by] || c.by || '—')}${c.amount != null ? ' · ' + fmt(Number(c.amount)) : ''}</span>
+          ${methods ? `<span class="pd-sub">${esc(methods)}</span>` : ''}`;
+      }
+
+      const lv = r.live;
+      let custCell = '—', liveCell = '—';
+      if (lv && lv.notFound) {
+        liveCell = '<span class="res-badge bad" title="الأوردر مش موجود على شوبيفاي">مش موجود</span>';
+      } else if (lv) {
+        custCell = (lv.customerName || lv.customerPhone)
+          ? `${esc(lv.customerName || '—')}<span class="pd-sub">${esc(lv.customerPhone || '')}</span>` : '—';
+        const fin = FIN_AR[lv.financialStatus] || lv.financialStatus || '—';
+        liveCell = (lv.cancelled ? '<span class="res-badge bad">ملغي</span> ' : '')
+          + `<span class="res-badge ${lv.financialStatus === 'PAID' ? 'ok' : 'none'}">${esc(fin)}</span>`
+          + (lv.outstanding != null && Number(lv.outstanding) !== 0
+              ? `<span class="pd-sub">متبقي ${fmt(Number(lv.outstanding))}</span>` : '');
+      }
+
+      return `<tr>
+        <td class="col-num">${r.registeredAt ? `${formatDate(r.registeredAt)} ${formatTimeOnly(r.registeredAt)}` : '—'}</td>
+        <td>${esc(empNames[r.registeredBy] || r.registeredBy || '—')}</td>
+        <td class="col-num">${orderLink(r.orderName, r.orderId)}${r.registrations > 1 ? `<span class="pd-sub">اتسجّل ${r.registrations} مرات</span>` : ''}</td>
+        <td class="col-num">${r.amount != null ? fmt(Number(r.amount)) : '—'}</td>
+        <td>${r.courier ? esc(r.courier) : '—'}</td>
+        <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
+        <td><span class="res-badge ${st.cls}" title="${esc(st.hint)}">${st.label}</span></td>
+        <td class="col-num">${collCell}</td>
+        <td class="pd-cust">${custCell}</td>
+        <td>${liveCell}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function pdRenderPager() {
+    const pages = Math.max(1, Math.ceil(pdTotal / PD_PAGE_SIZE));
+    $('pdPager').style.display = pages > 1 ? '' : 'none';
+    $('pdPageInfo').textContent = `صفحة ${pdPage} من ${pages}`;
+    $('pdPrev').disabled = pdPage <= 1;
+    $('pdNext').disabled = pdPage >= pages;
+  }
+  function pdGoPage(dir) {
+    const pages = Math.max(1, Math.ceil(pdTotal / PD_PAGE_SIZE));
+    const next = pdPage + dir;
+    if (next < 1 || next > pages) return;
+    pdPage = next; pdFetch();
+  }
+
   // ── Init ──────────────────────────────────────────────────────
   renderVersionUI();
   updateSettingsBtn();
@@ -2560,6 +2871,7 @@
   loadEmployeesList();
   msRenderList('emp');
   renderChips();
+  pdRenderChips();
   updateFilterIconState();
   updateSortHeaderUI();
   buildTabChipMenu();
