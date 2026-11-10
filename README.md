@@ -11,7 +11,7 @@
 |---|---|
 | الواجهة | https://ecommoda-dev.github.io/COD-Pre-Register-Payment/ |
 | الـ Worker | https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev |
-| الإصدار | Worker `v2.8.0` · الواجهة `v2.7.0` |
+| الإصدار | Worker `v2.9.0` · الواجهة `v2.8.0` |
 
 ## بنية الريبو
 
@@ -40,6 +40,6 @@ CLAUDE.md      ← قواعد الأداة وفخاخها وخط الأساس
 
 التفاصيل الكاملة → سكيل `ecommoda-tool-migration-playbook`.
 
-آخر تحديث: 09-11-2026 — 21:12
+آخر تحديث: 10-11-2026
 
 </div>
