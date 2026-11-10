@@ -684,6 +684,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   /* ══════════════════════════════════════════════════════
      CONFIRM DIALOG — clone-button pattern (destructive actions)
      ══════════════════════════════════════════════════════ */
+  .tbx .act-btn.del { background: var(--red-light, #fef2f2); border: 1px solid var(--red-border, #fecaca); color: var(--red, #dc2626); padding: 4px 9px; font-size: 11.5px; font-weight: 700; margin-inline: auto; cursor: pointer; white-space: nowrap; }
+  .tbx .act-btn.del:hover { background: var(--red, #dc2626); color: #fff; }
   .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 600; display: none; align-items: center; justify-content: center; padding: 20px; }
   .confirm-overlay.open { display: flex; }
   .confirm-modal { background: var(--bg-card); border-radius: 16px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,.18); overflow: hidden; animation: modalIn .2s ease; }
@@ -839,7 +841,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   <div class="main-tabs-bar" id="mainTabsBar">
     <button class="main-tab-btn active" id="tabMain" onclick="switchMainTab('main')">📋 تسجيل الدفع</button>
     <button class="main-tab-btn"        id="tabLog"  onclick="switchMainTab('log')">📜 سجل العمليات</button>
-    <button class="main-tab-btn"        id="tabPending" onclick="switchMainTab('pending')">⏳ المعلّقة والمحصّلة</button>
+    <button class="main-tab-btn"        id="tabPending" onclick="switchMainTab('pending')">⏳ المعلّقة</button>
+    <button class="main-tab-btn"        id="tabCollected" onclick="switchMainTab('collected')">✅ المحصّلة</button>
   </div>
 
   </div>
@@ -992,15 +995,15 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   </div>
   <!-- /panelLog -->
 
-  <!-- ══ PANEL: المعلّقة والمحصّلة ══ -->
+  <!-- ══ PANEL: المعلّقة ══ -->
   <div class="tab-panel" id="panelPending">
 
   <!-- ══════════════════════════════════════════════════════
-       §PENDING — كل الأوردرات المسجّلة مسبقًا: معلّق / اتحصّل / مفتاح عالق / اتمسح.
+       §PENDING — الأوردرات المسجّلة مسبقًا اللي لسه مش محصّلة: معلّق / اتمسح بدون تحصيل / مفتاح KV بدون سجل.
        القسم الموحّد بمعيار data-table-standard.md: كارت واحد · فلاتر في رأس العمود ·
        chips · عناوين ثابتة · عرض أعمدة بالسحب. الفلترة والترتيب والصفحات server-side.
        المصدر: KV (معلّق دلوقتي) + D1 (التسجيل + التحصيل) + شوبيفاي (نداء مجمّع واحد). بدون تصدير.
-       ⛔ بيانات العميل للعرض فقط — مش بتتخزّن ولا بتتصدّر.
+       زرار «حذف السجل» على صفوف «اتمسح بدون تحصيل مسجّل» بس (حذف فعلي من D1 + PIN).
        ══════════════════════════════════════════════════════ -->
   <div class="unified-section tbx" id="pdSection">
     <div class="tbl-bar" id="pdBar">
@@ -1025,7 +1028,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
           <colgroup id="pdCg"></colgroup>
           <thead id="pdHead"></thead>
           <tbody id="pdBody">
-            <tr class="empty-row"><td colspan="15">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>
+            <tr class="empty-row"><td colspan="11">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>
           </tbody>
         </table>
       </div>
@@ -1038,6 +1041,53 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   </div>
   </div>
   <!-- /panelPending -->
+
+  <!-- ══ PANEL: المحصّلة ══ -->
+  <div class="tab-panel" id="panelCollected">
+
+  <!-- ══════════════════════════════════════════════════════
+       §COLLECTED — الأوردرات المسجّلة مسبقًا واللي اتحصّلت: اتحصّل / اتحصّل والمفتاح لسه عالق في KV.
+       القسم الموحّد بمعيار data-table-standard.md: كارت واحد · فلاتر في رأس العمود ·
+       chips · عناوين ثابتة · عرض أعمدة بالسحب. الفلترة والترتيب والصفحات server-side.
+       المصدر: KV (معلّق دلوقتي) + D1 (التسجيل + التحصيل) + شوبيفاي (نداء مجمّع واحد). بدون تصدير.
+       قراءة بس — مفيش حذف هنا (سجل التسجيل هو الدليل على التحصيل).
+       ══════════════════════════════════════════════════════ -->
+  <div class="unified-section tbx" id="clSection">
+    <div class="tbl-bar" id="clBar">
+      <div class="tbl-bar-right">
+        <span class="tbl-toggle open" id="clTog">▲</span>
+        <div class="results-wrap">
+          <span class="results-label">النتائج:</span>
+          <span class="results-count" id="clCount">—</span>
+        </div>
+        <span class="upd" id="clUpd"></span>
+      </div>
+      <div class="tbl-bar-left">
+        <button class="act-btn refresh" type="button" data-pdrefresh>↺ تحديث</button>
+        <button class="clear-btn inactive" type="button" data-clearall>✕ مسح كل الفلاتر</button>
+      </div>
+    </div>
+    <div class="chips-zone pad" id="clChips"></div>
+    <div class="tbl-body-wrap" id="clWrap"><div>
+      <div id="clWarn" class="export-warn" style="display:none;margin:12px 16px 0;"></div>
+      <div class="tbl-scroll" id="clScroll">
+        <table class="data-table auto measuring" id="clTbl">
+          <colgroup id="clCg"></colgroup>
+          <thead id="clHead"></thead>
+          <tbody id="clBody">
+            <tr class="empty-row"><td colspan="13">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination-row" id="clPager" style="display:none;">
+        <button class="page-btn" id="clPrev" type="button" data-pdpage="-1">→ السابق</button>
+        <span class="page-info" id="clPageInfo"></span>
+        <button class="page-btn" id="clNext" type="button" data-pdpage="1">التالي ←</button>
+      </div>
+    </div></div>
+  </div>
+  </div>
+  <!-- /panelCollected -->
 
 </div>
 
@@ -1103,7 +1153,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
             <tr><td><code>preRegister</code></td><td>تسجيل الدفع + KV + ميتافيلد + D1</td></tr>
             <tr><td><code>checkPending / clearPending / listPending</code></td><td>API داخلي لـ cod-payment-center-worker</td></tr>
             <tr><td><code>get_logs / get_logs_count / get_logs_facets</code></td><td>سجل التسجيلات — فلترة (<code>employees</code> · <code>results</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> — يوم القاهرة) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلهم server-side</td></tr>
-            <tr><td><code>pending_details</code></td><td>تاب «المعلّقة والمحصّلة» — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية (S1/S2 كمان). قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> · <code>timeFrom/To</code> · <code>couriers</code> · <code>items</code> · <code>cAmountFrom/To</code> · <code>cDateFrom/To</code> · <code>cTimeFrom/To</code> · <code>custs</code> · <code>fins</code> · <code>s1</code> · <code>s2</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلها server-side</td></tr>
+            <tr><td><code>pending_details</code></td><td>تابا «المعلّقة» و«المحصّلة» (<code>scope=pending|collected</code>) — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية (المندوب · الحالة المالية · S1 · S2). قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> · <code>timeFrom/To</code> · <code>couriers</code> · <code>items</code> · <code>cAmountFrom/To</code> · <code>cDateFrom/To</code> · <code>cTimeFrom/To</code> · <code>fins</code> · <code>s1</code> · <code>s2</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلها server-side</td></tr>
+            <tr><td><code>delete_preregister</code></td><td>POST — حذف فعلي من D1 لأوردر «اتمسح بدون تحصيل مسجّل» (PIN الموظف + مفتاح KV مش موجود + مفيش تحصيل مسجّل) + صف تدقيق <code>preregister_delete</code> في سجل العمليات</td></tr>
             <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
             <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
             <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
@@ -1128,7 +1179,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
             <li><code>§TOOL-JS</code> — البحث عن الأوردر وعرضه وتسجيل الدفع</li>
             <li><code>§TABS-JS</code> — <code>switchMainTab</code> (lazy load للسجل) · <code>onPageScroll</code> بعتبتين (الباند مقيس بـ <code>measureSticky()</code>) + rAF · chip التاب الحالي</li>
             <li><code>§LOG-JS</code> — جدول السجل (الكائن <code>LG</code>) بنفس معيار تاب المعلّقة: فلاتر رأس العمود · <code>filterParams()</code> (مصدر واحد للفلاتر في <code>get_logs</code> و<code>get_logs_count</code> و<code>get_logs_facets</code> والتصدير) · <code>fetchNow()</code> · <code>toggleSort</code> · <code>exportLogXLSX</code></li>
-            <li><code>§PENDING-JS</code> — تاب «المعلّقة والمحصّلة» (الكائن <code>PD</code>): ١٥ عمود كلهم بفلتر (<code>COLS</code> · <code>MS_KEYS</code>/<code>NUM_KEYS</code>/<code>Q_KEYS</code>/<code>DATE_KEYS</code>/<code>TIME_KEYS</code>) · <code>params()</code> (مصدر واحد للفلاتر) · <code>fetchNow()</code> (آخر طلب بس هو اللي بيتعرض) · قوايم رأس العمود <code>openPop()</code>/<code>buildPop()</code> · <code>toggleSort()</code> · محرّك عرض الأعمدة <code>effective()</code>/<code>applyW()</code> · <code>liveBlockedMsg()</code> لرسالة سقف الفلاتر الحية · lazy عند فتح التاب</li>
+            <li><code>§PENDING-JS</code> — تابا «المعلّقة» و«المحصّلة» (<code>makePD(P, cfg)</code> بنسختين: <code>PD</code> و<code>PC</code>): كل عمود بفلتر ما عدا «إجراء» (<code>COLS</code> · <code>MS_KEYS</code>/<code>NUM_KEYS</code>/<code>Q_KEYS</code>/<code>DATE_KEYS</code>/<code>TIME_KEYS</code>) · <code>params()</code> (مصدر واحد للفلاتر) · <code>fetchNow()</code> (آخر طلب بس هو اللي بيتعرض) · قوايم رأس العمود <code>openPop()</code>/<code>buildPop()</code> · <code>toggleSort()</code> · محرّك عرض الأعمدة <code>effective()</code>/<code>applyW()</code> · <code>liveBlockedMsg()</code> لرسالة سقف الفلاتر الحية · lazy عند فتح التاب</li>
             <li><code>apiRequest</code> — الطبقة اللي بتفرّق: الـ Worker رد بخطأ / شبكة أو CORS / رد مش JSON</li>
             <li><code>checkWorkerVersion</code> + <code>runDiag</code> — حارس النسخة والفحص الذاتي</li>
           </ul>
@@ -1152,8 +1203,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
             <li>الوقت كله بتوقيت القاهرة عبر <code>cairoParts()</code> (<code>Intl</code> · <code>Africa/Cairo</code> — محسوب مش إزاحة ثابتة) — مش توقيت جهاز الموظف.</li>
             <li><b>الفلترة والعدّ والترتيب في السجل كلهم server-side</b> — السجل مقسّم صفحات، والفلترة في المتصفح كانت هتخلي «النتائج» تعدّ الصفحة مش القاعدة.</li>
             <li>فلتر <code>من/إلى تاريخ</code> بيتقارن بـ <code>timestamp</code> المخزّن (UTC) والعرض بتوقيت القاهرة (+3) — عملية بعد ٩ مساءً ممكن تقع في يوم UTC اللي بعده. مقبول لفلتر بالأيام.</li>
-            <li>الأعمدة المشتقّة من <code>extra</code> (المندوب · الشحن · المنتجات) <b>مش قابلة للترتيب</b> — مش أعمدة في جدول D1، عشان كده مالهاش سهم ترتيب.</li>
-            <li><b>فلاتر شوبيفاي الحية (العميل · شوبيفاي الآن · S1 · S2):</b> محتاجة نداء شوبيفاي لكل الأوردرات المطابقة للفلاتر التانية، فالـ Worker بيحدّها بـ ٢٥٠ (<code>PD_LIVE_FILTER_CAP</code>) ويرجّع <code>liveBlocked</code> صريح لو اتجاوزت — مفيش فلترة صامتة على جزء من البيانات. المجموعة ٥٠ أوردر (<code>LIVE_CHUNK</code>) بالتسلسل، وكاش ٢ دقيقة في ذاكرة الـ isolate بس.</li>
+            <li>الأعمدة المشتقّة من <code>extra</code> (المندوب · الشحن · المنتجات) في السجل <b>مش قابلة للترتيب</b> — مش أعمدة في جدول D1، عشان كده مالهاش سهم ترتيب.</li>
+            <li><b>فلاتر شوبيفاي الحية (المندوب · شوبيفاي الآن · S1 · S2):</b> محتاجة نداء شوبيفاي لكل الأوردرات المطابقة للفلاتر التانية، فالـ Worker بيحدّها بـ ٢٥٠ (<code>PD_LIVE_FILTER_CAP</code>) ويرجّع <code>liveBlocked</code> صريح لو اتجاوزت — مفيش فلترة صامتة على جزء من البيانات. المجموعة ٥٠ أوردر (<code>LIVE_CHUNK</code>) بالتسلسل، وكاش ٢ دقيقة في ذاكرة الـ isolate بس.</li>
             <li><b>عمود التحصيل</b> = <code>value_after</code> من صف <code>cod_payment/payment</code> (مبلغ الأوردر ده) — مش إجمالي الجلسة، ومش بيعرض طرق الدفع.</li>
             <li><b>بيانات العميل عرض فقط.</b> بتيجي من <code>preview</code> (محتاجة صلاحية <code>read_customers</code>) وبتتعرض في الكارت ونافذة التأكيد — <b>وممنوع</b> تدخل <code>writeLog</code> أو التصدير.</li>
           </ul>
@@ -1177,7 +1228,22 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
 
       <div class="cl-version-block">
         <div class="cl-version-row">
-          <span class="cl-ver-badge" id="clLatestBadge">v2.7.0</span>
+          <span class="cl-ver-badge" id="clLatestBadge">v2.8.0</span>
+          <span class="cl-ver-date">10-11-2026</span>
+        </div>
+        <ul class="cl-items">
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>تاب <b>المعلّقة والمحصّلة</b> اتقسم لتابين: <b>⏳ المعلّقة</b> (معلّق · اتحصّل والمفتاح عالق · اتمسح بدون تحصيل · مفتاح KV بدون سجل) و<b>✅ المحصّلة</b> (اتحصّل). كل تاب بفلاتره وعدّاداته، والحالات في فلتر «الحالة» بتتقصر على حالات التاب ده</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>اتشالت أعمدة <b>تاريخ التحصيل ووقت التحصيل والتحصيل (EGP)</b> من تاب المعلّقة (موجودة في تاب المحصّلة)</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>عمودا تاريخ ووقت التسجيل اتدمجوا في عمود واحد <b>«تاريخ / وقت التسجيل»</b> — التاريخ فوق والوقت تحته، بفلتر واحد فيه قسم تاريخ + قسم وقت، وترتيب على اللحظة نفسها</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>عمود <b>المندوب</b> بقى بياخد قيمته من شوبيفاي الحية (<code>custom.courier</code> — المندوب <b>الحالي</b>) زي S1/S2، مش من وقت التسجيل. الفلتر بقى حي (حد ٢٥٠ أوردر) وبقى بلا ترتيب</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>زرار <b>🗑 حذف السجل</b> على صفوف «اتمسح بدون تحصيل مسجّل» — حذف فعلي من D1 بعد تأكيد بالـ PIN. الـ Worker بيرفض لو المفتاح لسه في KV أو فيه تحصيل مسجّل. وكل حذف بيتسجّل في <b>سجل العمليات</b> كصف «🗑 اتحذف» فيه لقطة كاملة من الصفوف المحذوفة (الكتابة والحذف في batch واحد)</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>اتشال عمود <b>العميل</b> وفلتره (والـ Worker بطّل يجيب بيانات العميل في تاب المعلّقة)</span></li>
+        </ul>
+      </div>
+
+      <div class="cl-version-block">
+        <div class="cl-version-row">
+          <span class="cl-ver-badge old">v2.7.0</span>
           <span class="cl-ver-date">09-11-2026</span>
         </div>
         <ul class="cl-items">
@@ -1348,6 +1414,28 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════
+     DELETE DIALOG — حذف سجل تسجيل مسبق من D1 (تاب المعلّقة · حالة «اتمسح بدون تحصيل مسجّل» بس)
+     ══════════════════════════════════════════════════════ -->
+<div class="confirm-overlay" id="delOverlay" onclick="if(event.target===this)closeDeleteModal()">
+  <div class="confirm-modal">
+    <div class="confirm-modal-hdr">
+      <span style="color:var(--red)">🗑 حذف سجل من D1</span>
+      <button class="modal-close-x" onclick="closeDeleteModal()">✕</button>
+    </div>
+    <div class="confirm-modal-body">
+      <div id="delMsg"></div>
+      <label class="settings-label" for="delPin" style="display:block;margin-top:12px">الـ PIN بتاعك للتأكيد</label>
+      <input type="password" inputmode="numeric" autocomplete="off" class="settings-input" id="delPin" maxlength="12">
+      <div id="delErr" style="color:var(--red);font-size:12px;margin-top:8px;min-height:16px"></div>
+    </div>
+    <div class="confirm-modal-ftr">
+      <button class="btn-modal-cancel" onclick="closeDeleteModal()">إلغاء</button>
+      <button class="btn-confirm-ok" id="delOkBtn" style="background:var(--red)">حذف نهائي</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const $ = id => document.getElementById(id);
 
@@ -1355,10 +1443,10 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   // CONFIG
   // ══════════════════════════════════════════════════════════════
   // مصدر واحد لرقم النسخة — الهيدر وبادج الـ Changelog ونص اللوجن بيتقروا منه
-  const TOOL_VERSION = '2.7.0';
+  const TOOL_VERSION = '2.8.0';
   // أقل نسخة Worker الواجهة دي بتشتغل معاها (ضافت get_config/diag وعقد التصدير).
   // ⚠️ لو ضفت endpoint جديد في الـ Worker والصفحة اعتمدت عليه، ارفع الرقم ده.
-  const MIN_WORKER_VERSION = '2.8.0';   // النسخة اللي فيها فلاتر كل أعمدة تاب المعلّقة (couriers · items · cDate/cTime/cAmount · custs · fins · s1 · s2) + S1/S2 في live
+  const MIN_WORKER_VERSION = '2.9.0';   // النسخة اللي فيها scope=pending|collected + المندوب الحي (custom.courier) في live + delete_preregister (وبعد شيل العميل/custs)
 
   // الرابط مش سر — ثابت هنا بدل حقل إعدادات (html-builder Standards #28)
   const WORKER_URL = 'https://cod-pre-register-payment-worker.ecommoda-dev.workers.dev';
@@ -1441,6 +1529,39 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     $('confirmOverlay').classList.add('open');
   }
   function closeConfirm() { $('confirmOverlay').classList.remove('open'); }
+
+  // ── حذف سجل التسجيل المسبق (D1) — حذف فعلي مالوش تراجع ─────────────
+  // الـ Worker هو اللي بيقرّر: PIN صح + المفتاح مش في KV + مفيش تحصيل مسجّل. الواجهة بتسأل بس.
+  let delCtx = null, delBusy = false;
+  function openDeleteModal(ctx, onDone) {
+    delCtx = { ...ctx, onDone };
+    $('delMsg').textContent = `هيتحذف نهائيًا من D1 سجل التسجيل المسبق للأوردر ${ctx.orderName ? '#' + String(ctx.orderName).replace(/^#/, '') : ctx.orderId}`
+      + (ctx.regs > 1 ? ` (${ctx.regs} تسجيلات — كلهم)` : '') + '.\n'
+      + 'السجل ده أثر دفع اتسجّل على شوبيفاي، وبيتشال من التصدير ومن خط الأساس. هيتسجّل صف «اتحذف» في سجل العمليات فيه لقطة من الصفوف المحذوفة. الحذف نفسه مالوش تراجع.';
+    $('delMsg').style.whiteSpace = 'pre-line';
+    $('delPin').value = ''; $('delErr').textContent = '';
+    $('delOverlay').classList.add('open');
+    setTimeout(() => $('delPin').focus(), 50);
+  }
+  function closeDeleteModal() { if (delBusy) return; $('delOverlay').classList.remove('open'); delCtx = null; $('delPin').value = ''; }
+  async function confirmDelete() {
+    if (!delCtx || delBusy) return;
+    const pin = $('delPin').value.trim();
+    if (!pin) { $('delErr').textContent = 'اكتب الـ PIN'; return; }
+    if (!currentEmployee) { $('delErr').textContent = 'سجّل دخول أولاً'; return; }
+    delBusy = true; $('delOkBtn').disabled = true; $('delErr').textContent = '';
+    try {
+      const r = await apiPost('delete_preregister', { orderId: delCtx.orderId, username: currentEmployee.username, pin });
+      const done = delCtx.onDone;
+      delBusy = false; closeDeleteModal();
+      showToast(`🗑 اتحذف سجل الأوردر ${r.orderName || r.orderId} (${r.deleted} صف)`, 'ok');
+      if (done) done();
+    } catch (e) {
+      $('delErr').textContent = e.message;   // PIN غلط / المفتاح لسه في KV / اتحصّل — رسالة الـ Worker بالظبط
+    } finally { delBusy = false; $('delOkBtn').disabled = false; }
+  }
+  $('delOkBtn').addEventListener('click', confirmDelete);
+  $('delPin').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); confirmDelete(); } });
   function closeConfirmOnBackdrop(e) { if (e.target === e.currentTarget) closeConfirm(); }
 
   // ══════════════════════════════════════════════════════════════
@@ -1789,9 +1910,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   // §TABS-JS — التابات الرئيسية + Freeze on Scroll
   // (tabs-and-modals.md § 1 و § 1b)
   // ══════════════════════════════════════════════════════════════
-  const TAB_IDS = ['main', 'log', 'pending'];
-  const TAB_BTN = { main: 'tabMain', log: 'tabLog', pending: 'tabPending' };
-  const TAB_PANEL = { main: 'panelMain', log: 'panelLog', pending: 'panelPending' };
+  const TAB_IDS = ['main', 'log', 'pending', 'collected'];
+  const TAB_BTN = { main: 'tabMain', log: 'tabLog', pending: 'tabPending', collected: 'tabCollected' };
+  const TAB_PANEL = { main: 'panelMain', log: 'panelLog', pending: 'panelPending', collected: 'panelCollected' };
   let currentTab = 'main';
 
   function switchMainTab(tab) {
@@ -1800,9 +1921,10 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       $(TAB_BTN[id]).classList.toggle('active', id === tab);
       $(TAB_PANEL[id]).classList.toggle('active', id === tab);
     });
-    // lazy load — السجل وتاب المعلّقة ما بيتسحبوش غير لما الموظف يفتح التاب فعلاً
+    // lazy load — السجل وتابات المعلّقة/المحصّلة ما بيتسحبوش غير لما الموظف يفتح التاب فعلاً
     if (tab === 'log') LG.onShow(); else LG.closePop();
     if (tab === 'pending') PD.onShow(); else PD.closePop();
+    if (tab === 'collected') PC.onShow(); else PC.closePop();
     if (tab === 'main') setTimeout(() => $('orderInput')?.focus(), 60);
     updateTabChip();
     closeTabChipMenu();
@@ -1993,7 +2115,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
         collect:  (amount != null && shipping != null) ? amount - shipping : null,
         courier:  extra.courier || '',
         items:    (extra.lineItems || []).map(li => `${li.sku} × ${li.quantity}`).join('، '),
-        result:   extra.result ? (extra.result === 'warning' ? 'تم جزئيًا' : 'تم') : '—',
+        result:   row.type === 'preregister_delete' ? 'اتحذف' : (extra.result ? (extra.result === 'warning' ? 'تم جزئيًا' : 'تم') : '—'),
       });
     });
 
@@ -2275,6 +2397,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     $('activeUserBtn').textContent = '👤 —';
     LG.reset();
     PD.reset();
+    PC.reset();
     switchMainTab('main');
 
     currentEmployee = null;
@@ -2323,8 +2446,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     success: { label: '✓ تم',         cls: 'ok',   hint: 'كل الخطوات تمّت' },
     warning: { label: '⚠ تم جزئيًا',  cls: 'warn', hint: 'الفلوس اتسجّلت وخطوة تابعة ما تمّتش' },
     none:    { label: '—',            cls: 'none', hint: 'صف قبل v2.1.0 — مالوش حقل النتيجة (مش عارفين)' },
+    deleted: { label: '🗑 اتحذف',      cls: 'bad',  hint: 'صف تدقيق: سجل التسجيل المسبق اتحذف من D1 (أوردر اتمسح بدون تحصيل مسجّل)' },
   };
-  const RESULT_ORDER = ['success', 'warning', 'none'];
+  const RESULT_ORDER = ['success', 'warning', 'none', 'deleted'];
 
   const FL = { date: 'التاريخ', emp: 'الموظف', orderNo: 'رقم الأوردر', amount: 'المبلغ', result: 'النتيجة' };
   const MS_KEYS = ['emp', 'result'], NUM_KEYS = ['amount'], Q_KEYS = ['orderNo'], DATE_KEYS = ['date'], TIME_KEYS = [];
@@ -2510,7 +2634,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     const itemsCell = items.length
       ? `<div class="items-chips">${items.map(li => `<span class="item-chip">${esc(li.sku)} × ${esc(li.quantity)}</span>`).join('')}</div>` : '—';
     // الصفوف الأقدم من Worker v2.1.0 مالها extra.result — بتتعرض "—" مش "✓" (مش عارفين إن كل الخطوات تمّت)
-    const rs = RESULT[extra.result === 'success' || extra.result === 'warning' ? extra.result : 'none'];
+    const rs = RESULT[row.type === 'preregister_delete' ? 'deleted' : (extra.result === 'success' || extra.result === 'warning' ? extra.result : 'none')];
+    const delInfo = row.type === 'preregister_delete' ? ` — ${row.notes || ''}` : '';
     return `<tr>
       <td class="col-num">${formatDate(row.timestamp)}</td>
       <td class="col-num">${formatTimeOnly(row.timestamp)}</td>
@@ -2521,7 +2646,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       <td class="col-num">${collect != null ? fmt(collect) : '—'}</td>
       <td>${extra.courier ? esc(extra.courier) : '—'}</td>
       <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
-      <td><span class="res-badge ${rs.cls}" title="${esc(rs.hint)}">${rs.label}</span></td>
+      <td><span class="res-badge ${rs.cls}" title="${esc(rs.hint + delInfo)}">${rs.label}</span></td>
     </tr>`;
   }
   function render() {
@@ -2989,27 +3114,27 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   })();
 
   // ══════════════════════════════════════════════════════════════
-  // §PENDING-JS — تاب «المعلّقة والمحصّلة» (UI v2.5.0)
+  // §PENDING-JS — تابين «المعلّقة» و«المحصّلة» (UI v2.8.0) — نفس الكود `makePD(P, cfg)` بنسختين
   // القسم الموحّد بمعيار الجداول الحالي (data-table-standard.md):
   //   فلاتر في رأس العمود (قايمة عائمة position:fixed على body) · ترتيب بضغطة على
   //   اسم العمود · chips تحت صف النتائج · عناوين ثابتة · عرض الأعمدة بالسحب.
   // الفلترة والعدّ والترتيب والصفحات **server-side** (action=pending_details) —
   // فالقايمة اللي بتتعرض هي نتيجة السيرفر، مش فلترة في المتصفح.
-  // ⛔ اسم العميل وتليفونه بيتعرضوا بس — مفيش تخزين ولا تصدير (CLAUDE.md).
+  // (عمود العميل اتحذف في v2.8.0 — مفيش بيانات عميل في الـ endpoint ده.)
   //
   // ⚠️ استثناءات واعية من المعيار (السبب: الجدول مقسّم صفحات server-side):
   //   • فلتر رقم الأوردر: توكنز بـ Enter (OR) من غير اقتراحات لايف — الاقتراحات
   //     محتاجة نداء للسيرفر مع كل حرف.
   //   • فلتر المبلغ: نطاق من-إلى بس — قايمة القيم مالهاش معنى لمبالغ متنوعة.
-  //   • المندوب والمنتجات والعميل وحالة شوبيفاي: بلا فلتر ولا ترتيب — مشتقّة من
-  //     extra JSON أو من شوبيفاي الحية، مش موجودة قبل تقسيم الصفحات.
+  //   • المنتجات (من extra JSON) والمندوب وحالة شوبيفاي (من شوبيفاي الحية): فلتر بس بلا ترتيب
+  //     — مش موجودة قبل تقسيم الصفحات.
   // ══════════════════════════════════════════════════════════════
-  const PD = (function () {
+  function makePD(P, cfg) {
   'use strict';
   const Q = s => document.querySelector(s);
   const pad2 = n => String(n).padStart(2, '0');
   const PAGE = 100;
-  const LS_COLS = 'prereg_pending_col_widths_v2';
+  const LS_COLS = cfg.ls;
 
   const PD_STATUS = {
     pending:   { label: '🟡 معلّق للتحصيل',          cls: 'warn', hint: 'المفتاح لسه في KV' },
@@ -3018,7 +3143,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     cleared:   { label: '❓ اتمسح بدون تحصيل مسجّل', cls: 'none', hint: 'المفتاح مش في KV ومفيش تحصيل في لوج أداة التحصيل' },
     kv_only:   { label: '🗂 مفتاح KV بدون سجل',      cls: 'info', hint: 'مفتاح في KV مالوش صف تسجيل في D1' },
   };
-  const STATUS_ORDER = ['pending', 'collected', 'stale', 'cleared', 'kv_only'];
+  const STATUS_ORDER = cfg.statuses;   // حالات التاب ده بس (الـ Worker بيقصرها بـ scope)
   const FIN_AR = { PAID: 'مدفوع', PENDING: 'معلّق', PARTIALLY_PAID: 'مدفوع جزئيًا', AUTHORIZED: 'مفوَّض',
                    REFUNDED: 'مسترد', PARTIALLY_REFUNDED: 'مسترد جزئيًا', VOIDED: 'ملغى', EXPIRED: 'منتهي' };
   // قيم فلتر «شوبيفاي الآن» — الحالة المالية + «ملغي» (cancelledAt) + «مش موجود» (الـ node رجع فاضي)
@@ -3034,15 +3159,15 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
                   'Confirmed + EXCHANGE': 'warn', 'Returned': 'bad', 'Cancelled': 'bad' };
 
   // كل عمود له فلتر. التاريخ والوقت عمودين منفصلين (للتسجيل وللتحصيل) — كل واحد بفلتره وترتيبه (datetime-format.md § 4b)
-  const FL = { regDate: 'تاريخ التسجيل', regTime: 'وقت التسجيل', emp: 'الموظف', orderNo: 'رقم الأوردر', amount: 'المبلغ', courier: 'المندوب',
-               items: 'المنتجات', status: 'الحالة', collDate: 'تاريخ التحصيل', collTime: 'وقت التحصيل', camount: 'التحصيل', cust: 'العميل',
+  const FL = { regDT: 'تاريخ / وقت التسجيل', regDate: 'تاريخ التسجيل', regTime: 'وقت التسجيل', emp: 'الموظف', orderNo: 'رقم الأوردر', amount: 'المبلغ', courier: 'المندوب',
+               items: 'المنتجات', status: 'الحالة', collDate: 'تاريخ التحصيل', collTime: 'وقت التحصيل', camount: 'التحصيل',
                fin: 'شوبيفاي الآن', s1: 'S1', s2: 'S2' };
-  const MS_KEYS = ['emp', 'status', 'courier', 'items', 'fin', 's1', 's2'], NUM_KEYS = ['amount', 'camount'], Q_KEYS = ['orderNo', 'cust'],
+  const MS_KEYS = ['emp', 'status', 'courier', 'items', 'fin', 's1', 's2'], NUM_KEYS = ['amount', 'camount'], Q_KEYS = ['orderNo'],
         DATE_KEYS = ['regDate', 'collDate'], TIME_KEYS = ['regTime', 'collTime'];
   const SEARCH_MIN = 10;   // مربع البحث في قوايم القيم بيظهر من 10 قيم فأكتر
   // مفاتيح الترتيب = whitelist الـ Worker (PD_SORT) حرفيًا — مفتاح مش فيها بيرجع للافتراضي في صمت
-  // (المنتجات · العميل · شوبيفاي الآن · S1 · S2 قابلة للفلترة بس — مشتقّة من extra أو من شوبيفاي الحية)
-  const SORTMAP = { regDate: 'registeredAt', regTime: 'registeredAt', emp: 'employee', orderNo: 'orderName', amount: 'amount', courier: 'courier',
+  // (المنتجات · المندوب · شوبيفاي الآن · S1 · S2 قابلة للفلترة بس — مشتقّة من extra أو من شوبيفاي الحية)
+  const SORTMAP = { regDT: 'registeredAt', emp: 'employee', orderNo: 'orderName', amount: 'amount',
                     status: 'status', collDate: 'collectedAt', collTime: 'collectedAt', camount: 'collAmount' };
   const PRESETS = { today:'اليوم', yesterday:'أمس', last3:'آخر 3 أيام', last7:'آخر 7 أيام', last14:'آخر 14 يوم', last21:'آخر 21 يوم',
     last30:'آخر 30 يوم', last60:'آخر 60 يوم', last90:'آخر 90 يوم', thisMonth:'الشهر الحالي', lastMonth:'الشهر السابق',
@@ -3059,10 +3184,12 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   TIME_KEYS.forEach(k => { st.tm[k] = { from: '', to: '' }; });
   let data = null, pageNo = 1, loadedOnce = false, reqId = 0, fetchTimer = 0;
 
-  const typeOf = k => MS_KEYS.includes(k) ? 'ms' : NUM_KEYS.includes(k) ? 'num' : Q_KEYS.includes(k) ? 'q' : TIME_KEYS.includes(k) ? 'time' : 'date';
+  const typeOf = k => k === 'regDT' ? 'dt' : MS_KEYS.includes(k) ? 'ms' : NUM_KEYS.includes(k) ? 'num' : Q_KEYS.includes(k) ? 'q' : TIME_KEYS.includes(k) ? 'time' : 'date';
+  // عمود «تاريخ / وقت التسجيل» = فلتر واحد بقسمين (تاريخ + وقت) فوق حالتين منفصلتين st.date.regDate / st.tm.regTime
+  const dK = k => k === 'regDT' ? 'regDate' : k, tK = k => k === 'regDT' ? 'regTime' : k;
   const latinDigits = s => String(s).replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
   const orderParts = v => latinDigits(v).split(/\D+/).filter(Boolean);   // المسافة/الفاصلة = أوردر تاني (OR)
-  // رقم الأوردر = أرقام بس · العميل = نص حر (اسم أو تليفون)، كل Enter = توكن
+  // رقم الأوردر = أرقام بس، كل Enter = توكن
   const qClean = k => k === 'orderNo' ? latinDigits(st.q[k]).replace(/\D/g, '') : latinDigits(st.q[k]).trim();
   const qParts = k => k === 'orderNo' ? orderParts(st.q[k]) : (qClean(k) ? [qClean(k)] : []);
   const tokPre = k => k === 'orderNo' ? '#' : '';
@@ -3092,7 +3219,10 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     let its;
     if (k === 'status') return STATUS_ORDER.map(v => ({ v, l: PD_STATUS[v].label, c: fc(f && f.status, v) }));
     if (k === 'emp') its = Object.keys(empNames).map(u => ({ v: u, l: empNames[u], c: fc(f && f.employee, u) })).sort(byLabel);
-    else if (k === 'courier') its = Object.keys((f && f.courier) || {}).map(v => ({ v, l: v === NONE ? '— بدون مندوب' : v, c: fc(f.courier, v) })).sort(byLabel);
+    else if (k === 'courier') {   // المندوب الحالي من شوبيفاي (زي S1/S2): المفردات من التسجيلات + أي قيمة جت حية، والعدّادات من الحي بس
+      const set = new Set([...((f && f.courierVocab) || []), ...Object.keys((lv && lv.courier) || {}).filter(v => v !== NONE), ...[...st.ms.courier].filter(v => v !== NONE)]);
+      return [...set].sort((x, y) => x.localeCompare(y, 'ar')).concat(NONE).map(v => ({ v, l: v === NONE ? '— بدون مندوب' : v, c: fc(lv && lv.courier, v) }));
+    }
     else if (k === 'items') its = Object.keys((f && f.items) || {}).map(v => ({ v, l: v, c: fc(f.items, v) })).sort(byLabel);
     else if (k === 'fin') return FIN_ORDER.map(v => ({ v, l: FIN_LBL[v], c: fc(lv && lv.fin, v) }));
     else return (k === 's1' ? S1_VALUES : S2_VALUES).concat(NONE).map(v => ({ v, l: v === NONE ? '— بدون قيمة' : v, c: fc(lv && lv[k], v) }));
@@ -3104,7 +3234,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   const labelOf = (k, v) => (itemsFor(k).find(i => i.v === v) || { l: v }).l;
 
   // ── باراميترات الفلاتر للسيرفر (مصدر واحد) ───────────────────────
-  // القوايم الحرّة (مندوب · SKU · عميل · S1/S2) بتتفصل بـ '||' لأن القيمة نفسها ممكن تحتوي فاصلة.
+  // القوايم الحرّة (مندوب · SKU · S1/S2) بتتفصل بـ '||' لأن القيمة نفسها ممكن تحتوي فاصلة.
   function params() {
     const p = {};
     const sel = (k, name, sep) => { if (st.ms[k].size) p[name] = [...st.ms[k]].join(sep); };
@@ -3113,8 +3243,6 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     sel('fin', 'fins', '||'); sel('s1', 's1', '||'); sel('s2', 's2', '||');
     const ords = [...st.tok.orderNo, ...qParts('orderNo')];
     if (ords.length) p.orders = ords.join(',');
-    const cs = [...st.tok.cust, ...qParts('cust')];
-    if (cs.length) p.custs = cs.join('||');
     const a = st.num.amount, ca = st.num.camount;
     if (a.from !== '') p.amountFrom = a.from;
     if (a.to !== '') p.amountTo = a.to;
@@ -3130,6 +3258,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (ct.from) p.cTimeFrom = ct.from;
     if (ct.to) p.cTimeTo = ct.to;
     if (st.sort.key && SORTMAP[st.sort.key]) { p.sortKey = SORTMAP[st.sort.key]; p.sortDir = st.sort.dir; }
+    p.scope = cfg.scope;   // pending | collected — الـ Worker بيقصر الحالات عليه
     return p;
   }
   // ⚠️ !!value مش !== null — undefined !== null = true (data-table-standard § 3)
@@ -3146,6 +3275,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (ty === 'num') { const a = st.num[k]; return (a.from !== '' || a.to !== '') ? 1 : 0; }
     if (ty === 'q') return st.tok[k].length + (qClean(k) ? 1 : 0);
     if (ty === 'time') return tmCount(k);
+    if (ty === 'dt') return activeCount('regDate') + activeCount('regTime');
     return (st.date[k].from || st.date[k].to) ? 1 : 0;
   }
   const resetDate = k => { st.date[k] = blankDate(); };
@@ -3178,10 +3308,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
 
   // ── الأعمدة ────────────────────────────────────────────────────
   // keep = عمود nowrap (تاريخ/وقت/أرقام) ما بيتضغطش تحت عرض محتواه — لو المساحة ناقصة الجدول بيسكرول أفقيًا بدل ما المحتوى يطلع برّه خليته.
-  // 15 عمود، كلهم بفلتر. التاريخ والوقت (تسجيل/تحصيل) أعمدة منفصلة — كل واحد sortable مستقل من نفس الـ timestamp
-  const COLS = [
-    { k: 'regDate',  l: 'تاريخ التسجيل',  flt: 'regDate', keep: true },
-    { k: 'regTime',  l: 'وقت التسجيل',    flt: 'regTime', keep: true },
+  // تاب المعلّقة: التسجيل (تاريخ+وقت في عمود واحد) · تاب المحصّلة: + تاريخ/وقت/مبلغ التحصيل (منفصلين). كل عمود بفلتر ما عدا «إجراء».
+  const ALL_COLS = [
+    { k: 'regDT',    l: 'تاريخ / وقت التسجيل', flt: 'regDT', keep: true },
     { k: 'emp',      l: 'الموظف',         flt: 'emp' },
     { k: 'orderNo',  l: 'رقم الأوردر',    flt: 'orderNo', keep: true },
     { k: 'amount',   l: 'المبلغ (EGP)',   flt: 'amount', keep: true },
@@ -3191,18 +3320,20 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     { k: 'collDate', l: 'تاريخ التحصيل',  flt: 'collDate', keep: true },
     { k: 'collTime', l: 'وقت التحصيل',    flt: 'collTime', keep: true },
     { k: 'camount',  l: 'التحصيل (EGP)',  flt: 'camount', keep: true },
-    { k: 'cust',     l: 'العميل',         flt: 'cust' },
     { k: 'fin',      l: 'شوبيفاي الآن',   flt: 'fin' },
     { k: 's1',       l: 'S1',             flt: 's1' },
     { k: 's2',       l: 'S2',             flt: 's2' },
+    { k: 'act',      l: 'إجراء',          keep: true, nosort: true },
   ];
+  const COLS = ALL_COLS.filter(c => cfg.cols.includes(c.k));   // كل تاب بيعرض أعمدته بس
+
   const FUNNEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z"/></svg>';
   const ICO_CAL = '<svg class="dt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
   const ICO_CLK = '<svg class="dt-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
   const dtInp = attrs => `<div class="dt-wrap"><input type="date" class="inp" ${attrs}>${ICO_CAL}</div>`;
   function buildHead() {
-    Q('#pdCg').innerHTML = COLS.map(c => `<col data-c="${c.k}">`).join('');
-    Q('#pdHead').innerHTML = '<tr>' + COLS.map(c => `<th data-col="${c.k}" ${c.flt ? `data-fk="${c.flt}"` : ''}><div class="th-in">` +
+    Q(`#${P}Cg`).innerHTML = COLS.map(c => `<col data-c="${c.k}">`).join('');
+    Q(`#${P}Head`).innerHTML = '<tr>' + COLS.map(c => `<th data-col="${c.k}" ${c.flt ? `data-fk="${c.flt}"` : ''}><div class="th-in">` +
       ((c.nosort || !SORTMAP[c.k]) ? `<span>${c.l}</span>`
         : `<span class="th-label" data-sort="${c.k}" tabindex="0" role="button">${c.l}<span class="sort-icon"></span></span>`) +
       (c.flt ? `<button class="th-flt" type="button" data-flt="${c.flt}" aria-label="فلتر ${esc(c.l)}">${FUNNEL}<b class="th-cnt"></b></button>` : '') +
@@ -3221,22 +3352,22 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (!isConfigured()) { showToast('الأداة غير مضبوطة', 'error'); openSettings(); return; }
     loadedOnce = true;
     const my = ++reqId;
-    Q('#pdScroll').classList.add('is-loading');
-    if (!data) Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}">جاري التحميل...</td></tr>`;
+    Q(`#${P}Scroll`).classList.add('is-loading');
+    if (!data) Q(`#${P}Body`).innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}">جاري التحميل...</td></tr>`;
     try {
       const d = await apiGet('pending_details', { ...params(), limit: PAGE, offset: (pageNo - 1) * PAGE });
       if (my !== reqId) return;   // طلب أقدم — الفلاتر اتغيّرت وإحنا مستنيين
       data = d;
-      Q('#pdUpd').textContent = `آخر تحديث ${formatDateTime(new Date().toISOString())}`;
+      Q(`#${P}Upd`).textContent = `آخر تحديث ${formatDateTime(new Date().toISOString())}`;
       render(); renderWarn(d);
       if (pop && popKey && typeOf(popKey) === 'ms') renderList();   // عدّادات القايمة المفتوحة (من الـ facets الجديدة)
     } catch (err) {
       if (my !== reqId) return;
-      Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}" style="color:var(--red)">فشل التحميل — ${esc(err.message)}</td></tr>`;
-      Q('#pdCount').textContent = '—'; Q('#pdPager').style.display = 'none';
-      showToast('فشل تحميل المعلّقة والمحصّلة: ' + err.message, 'error');
+      Q(`#${P}Body`).innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}" style="color:var(--red)">فشل التحميل — ${esc(err.message)}</td></tr>`;
+      Q(`#${P}Count`).textContent = '—'; Q(`#${P}Pager`).style.display = 'none';
+      showToast(`فشل تحميل ${cfg.title}: ` + err.message, 'error');
     }
-    if (my === reqId) Q('#pdScroll').classList.remove('is-loading');
+    if (my === reqId) Q(`#${P}Scroll`).classList.remove('is-loading');
   }
   // تنبيهات صريحة بدل الصمت: سقف الصفوف · قراءة مفاتيح KV المقصوصة · فشل شوبيفاي
   function renderWarn(d) {
@@ -3245,9 +3376,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (d.orphansTruncated) w.push('⚠️ مفاتيح KV بدون سجل كتيرة — اتعرض جزء منها بس.');
     if (d.kvComplete === false) w.push('⚠️ قائمة مفاتيح KV ناقصة (سقف القراءة) — حالات «معلّق» ممكن تكون غير مكتملة.');
     if (d.shopify && d.shopify.ok === false && !d.liveBlocked)
-      w.push(`⚠️ تعذّر جلب حالة شوبيفاي الحية وبيانات العميل — الباقي معروض من KV وD1. (${esc(d.shopify.error)})`);
+      w.push(`⚠️ تعذّر جلب حالة شوبيفاي الحية (المندوب · الحالة المالية · S1 · S2) — الباقي معروض من KV وD1. (${esc(d.shopify.error)})`);
     TIME_KEYS.forEach(k => { const a = st.tm[k]; if (a.from && a.to && a.from > a.to) w.push(`⚠️ وقت «من» بعد وقت «إلى» في فلتر ${FL[k]} — مفيش نتايج.`); });
-    const el = Q('#pdWarn');
+    const el = Q(`#${P}Warn`);
     el.style.display = w.length ? '' : 'none';
     el.innerHTML = w.join('<br>');
   }
@@ -3265,60 +3396,62 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     const collCell = c ? `${esc(empNames[c.by] || c.by || '—')} · ${c.amount != null ? fmt(Number(c.amount)) : '—'}` : '—';
 
     const lv = r.live;
-    let custCell = '—', liveCell = '—', s1Cell = '—', s2Cell = '—';
+    let liveCell = '—', s1Cell = '—', s2Cell = '—', courierCell = '—';
     const sBadge = v => v ? `<span class="res-badge ${S_CLS[v] || 'none'}" style="white-space:nowrap">${esc(v)}</span>` : '—';
     if (lv && lv.notFound) {
       liveCell = '<span class="res-badge bad" title="الأوردر مش موجود على شوبيفاي">مش موجود</span>';
     } else if (lv) {
-      custCell = (lv.customerName || lv.customerPhone)
-        ? `${esc(lv.customerName || '—')}<div class="sub">${esc(lv.customerPhone || '')}</div>` : '—';
       const fin = FIN_AR[lv.financialStatus] || lv.financialStatus || '—';
       liveCell = (lv.cancelled ? '<span class="res-badge bad">ملغي</span> ' : '')
         + `<span class="res-badge ${lv.financialStatus === 'PAID' ? 'ok' : 'none'}">${esc(fin)}</span>`
         + (lv.outstanding != null && Number(lv.outstanding) !== 0 ? `<div class="sub">متبقي ${fmt(Number(lv.outstanding))}</div>` : '');
       s1Cell = sBadge(lv.s1); s2Cell = sBadge(lv.s2);
+      courierCell = lv.courier ? esc(lv.courier) : '—';   // المندوب الحالي على شوبيفاي (custom.courier)
     }
-    return `<tr>
-      <td class="col-num">${formatDate(r.registeredAt)}</td>
-      <td class="col-num">${formatTimeOnly(r.registeredAt)}</td>
-      <td>${esc(empNames[r.registeredBy] || r.registeredBy || '—')}</td>
-      <td class="col-num">${orderLink(r.orderName, r.orderId)}${r.registrations > 1 ? `<div class="sub">اتسجّل ${r.registrations} مرات</div>` : ''}</td>
-      <td class="col-num">${r.amount != null ? fmt(Number(r.amount)) : '—'}</td>
-      <td>${r.courier ? esc(r.courier) : '—'}</td>
-      <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
-      <td><span class="res-badge ${stt.cls}" title="${esc(stt.hint)}">${stt.label}</span></td>
-      <td class="col-num">${formatDate(c ? c.at : null)}</td>
-      <td class="col-num">${formatTimeOnly(c ? c.at : null)}</td>
-      <td class="col-num">${collCell}</td>
-      <td>${custCell}</td>
-      <td>${liveCell}</td>
-      <td>${s1Cell}</td>
-      <td>${s2Cell}</td>
-    </tr>`;
+    // زرار الحذف: «اتمسح بدون تحصيل مسجّل» بس — الـ Worker بيرفض أي حالة تانية برضه
+    const actCell = r.status === 'cleared'
+      ? `<button class="act-btn del" type="button" data-pddel="${esc(r.orderId)}" data-pdname="${esc(r.orderName || '')}" data-pdregs="${r.registrations || 1}" title="حذف سجل التسجيل ده من D1">🗑 حذف السجل</button>` : '—';
+    const cells = {
+      regDT:    `<td class="col-num">${formatDate(r.registeredAt)}<div class="sub">${formatTimeOnly(r.registeredAt)}</div></td>`,
+      emp:      `<td>${esc(empNames[r.registeredBy] || r.registeredBy || '—')}</td>`,
+      orderNo:  `<td class="col-num">${orderLink(r.orderName, r.orderId)}${r.registrations > 1 ? `<div class="sub">اتسجّل ${r.registrations} مرات</div>` : ''}</td>`,
+      amount:   `<td class="col-num">${r.amount != null ? fmt(Number(r.amount)) : '—'}</td>`,
+      courier:  `<td>${courierCell}</td>`,
+      items:    `<td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>`,
+      status:   `<td><span class="res-badge ${stt.cls}" title="${esc(stt.hint)}">${stt.label}</span></td>`,
+      collDate: `<td class="col-num">${formatDate(c ? c.at : null)}</td>`,
+      collTime: `<td class="col-num">${formatTimeOnly(c ? c.at : null)}</td>`,
+      camount:  `<td class="col-num">${collCell}</td>`,
+      fin:      `<td>${liveCell}</td>`,
+      s1:       `<td>${s1Cell}</td>`,
+      s2:       `<td>${s2Cell}</td>`,
+      act:      `<td class="col-num">${actCell}</td>`,
+    };
+    return `<tr>${COLS.map(col => cells[col.k]).join('')}</tr>`;
   }
-  // فلتر حي (العميل · شوبيفاي الآن · S1 · S2) محتاج شوبيفاي لكل الأوردرات المطابقة — الـ Worker بيرفض لو العدد كبير بدل ما يطلّع رقم غلط
+  // فلتر حي (المندوب · شوبيفاي الآن · S1 · S2) محتاج شوبيفاي لكل الأوردرات المطابقة — الـ Worker بيرفض لو العدد كبير بدل ما يطلّع رقم غلط
   function liveBlockedMsg(b) {
     return b.reason === 'too_many'
-      ? `فلاتر العميل / شوبيفاي الآن / S1 / S2 بتحتاج جلب بيانات شوبيفاي الحية لكل الأوردرات المطابقة — العدد دلوقتي ${b.candidates.toLocaleString('en-US')} والحد ${b.cap.toLocaleString('en-US')}. ضيّق باقي الفلاتر الأول (التاريخ · الحالة · الموظف · المندوب…).`
-      : `تعذّر جلب بيانات شوبيفاي لتطبيق فلاتر العميل / شوبيفاي الآن / S1 / S2 — ${esc(b.error || '')}`;
+      ? `فلاتر المندوب / شوبيفاي الآن / S1 / S2 بتحتاج جلب بيانات شوبيفاي الحية لكل الأوردرات المطابقة — العدد دلوقتي ${b.candidates.toLocaleString('en-US')} والحد ${b.cap.toLocaleString('en-US')}. ضيّق باقي الفلاتر الأول (التاريخ · الحالة · الموظف…).`
+      : `تعذّر جلب بيانات شوبيفاي لتطبيق فلاتر المندوب / شوبيفاي الآن / S1 / S2 — ${esc(b.error || '')}`;
   }
   function render() {
     const rows = data.rows || [], total = data.total || 0;
     if (data.liveBlocked) {
-      Q('#pdCount').textContent = '—';
-      Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}" style="color:var(--amber);font-weight:700;line-height:1.9;padding:22px 16px">⚠️ ${liveBlockedMsg(data.liveBlocked)}</td></tr>`;
-      Q('#pdPager').style.display = 'none';
+      Q(`#${P}Count`).textContent = '—';
+      Q(`#${P}Body`).innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}" style="color:var(--amber);font-weight:700;line-height:1.9;padding:22px 16px">⚠️ ${liveBlockedMsg(data.liveBlocked)}</td></tr>`;
+      Q(`#${P}Pager`).style.display = 'none';
       renderChips(); updateStates();
       if (wReady) applyW(); else ensureW();
       return;
     }
-    Q('#pdCount').textContent = total.toLocaleString('en-US');
-    Q('#pdBody').innerHTML = rows.length ? rows.map(rowHtml).join('')
-      : `<tr class="empty-row"><td colspan="${COLS.length}">${anyFilterActive() ? 'مفيش نتايج مطابقة للفلاتر' : 'لا توجد أوردرات مسجّلة مسبقًا'}</td></tr>`;
+    Q(`#${P}Count`).textContent = total.toLocaleString('en-US');
+    Q(`#${P}Body`).innerHTML = rows.length ? rows.map(rowHtml).join('')
+      : `<tr class="empty-row"><td colspan="${COLS.length}">${anyFilterActive() ? 'مفيش نتايج مطابقة للفلاتر' : cfg.empty}</td></tr>`;
     const pages = Math.max(1, Math.ceil(total / PAGE));
-    Q('#pdPager').style.display = pages > 1 ? '' : 'none';
-    Q('#pdPageInfo').textContent = `صفحة ${pageNo} من ${pages}`;
-    Q('#pdPrev').disabled = pageNo <= 1; Q('#pdNext').disabled = pageNo >= pages;
+    Q(`#${P}Pager`).style.display = pages > 1 ? '' : 'none';
+    Q(`#${P}PageInfo`).textContent = `صفحة ${pageNo} من ${pages}`;
+    Q(`#${P}Prev`).disabled = pageNo <= 1; Q(`#${P}Next`).disabled = pageNo >= pages;
     renderChips(); updateStates();
     if (wReady) applyW(); else ensureW();   // الصفوف اتغيّرت → سكرول عمودي ممكن ظهر/اختفى → عرض الكارت اتغيّر
   }
@@ -3327,7 +3460,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   function chipRow(label, chips) { return `<div class="ms-chips-row"><span class="chips-label">${label}:</span>${chips.join('')}</div>`; }
   const chip = (t, rm) => `<span class="ms-chip">${esc(t)}<button type="button" data-rm="${esc(rm)}" aria-label="إزالة">✕</button></span>`;
   function renderChips() {
-    const z = Q('#pdChips'); if (!z) return;
+    const z = Q(`#${P}Chips`); if (!z) return;
     const rows = [];
     MS_KEYS.forEach(k => { if (st.ms[k].size) rows.push(chipRow(FL[k], [...st.ms[k]].map(v => chip(labelOf(k, v), `ms:${k}:${v}`)))); });
     NUM_KEYS.forEach(k => { const a = st.num[k]; if (a.from !== '' || a.to !== '') rows.push(chipRow(FL[k], [chip(`من ${a.from || '—'} إلى ${a.to || '—'}`, `range:${k}:`)])); });
@@ -3342,13 +3475,13 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
   function updateStates() {
     const on = anyFilterActive();
-    document.querySelectorAll('#pdSection [data-clearall]').forEach(b => b.classList.toggle('inactive', !on));
-    document.querySelectorAll('#pdHead th[data-fk]').forEach(th => {
+    document.querySelectorAll(`#${P}Section [data-clearall]`).forEach(b => b.classList.toggle('inactive', !on));
+    document.querySelectorAll(`#${P}Head th[data-fk]`).forEach(th => {
       const n = activeCount(th.dataset.fk);
       th.classList.toggle('flt-on', n > 0);
       const c = th.querySelector('.th-cnt'); if (c) c.textContent = n > 1 ? n : (n ? '●' : '');
     });
-    document.querySelectorAll('#pdHead th[data-col]').forEach(th => {
+    document.querySelectorAll(`#${P}Head th[data-col]`).forEach(th => {
       const act = st.sort.key === th.dataset.col;
       th.classList.toggle('sorted', act);
       const si = th.querySelector('.sort-icon');
@@ -3372,7 +3505,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (popKey === k && popAnchor === anchor) { closePop(); return; }
     closePop(); popKey = k; popAnchor = anchor;
     pop = document.createElement('div'); pop.className = 'pop tbx'; document.body.appendChild(pop);
-    if (typeOf(k) === 'date') { const m = st.date[k].month; popYear = m ? +m.slice(0, 4) : curYear(); }
+    if (typeOf(k) === 'date' || typeOf(k) === 'dt') { const m = st.date[dK(k)].month; popYear = m ? +m.slice(0, 4) : curYear(); }
     buildPop();
     const f = pop.querySelector('[data-autofocus]'); if (f) f.focus();
   }
@@ -3413,29 +3546,33 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="clear">✕ مسح الاختيار</button></div>` +
         `<div class="pop-body"><div class="sec"><div class="sec-t">نطاق (من — إلى)</div><div class="rng"><div><label for="rf-${k}">من</label><input id="rf-${k}" type="number" class="inp" data-r="from" data-rk="${k}" value="${esc(a.from)}" data-autofocus></div><div><label for="rt-${k}">إلى</label><input id="rt-${k}" type="number" class="inp" data-r="to" data-rk="${k}" value="${esc(a.to)}"></div></div></div></div>`;
     } else if (ty === 'q') {
-      const isNo = k === 'orderNo';
-      h = `<div class="pop-hd">${FL[k]}</div><div class="pop-body"><div class="search-wrap"><input id="q-${k}" class="inp ${qClean(k) ? 'has-value' : ''}" data-q="${k}" value="${esc(st.q[k])}" ${isNo ? 'placeholder="اكتب رقم واضغط Enter"' : ''} autocomplete="off" data-autofocus><span class="search-icon">🔍</span></div>` +
+      h = `<div class="pop-hd">${FL[k]}</div><div class="pop-body"><div class="search-wrap"><input id="q-${k}" class="inp ${qClean(k) ? 'has-value' : ''}" data-q="${k}" value="${esc(st.q[k])}" placeholder="اكتب رقم واضغط Enter" autocomplete="off" data-autofocus><span class="search-icon">🔍</span></div>` +
         `<div class="tok-row">${st.tok[k].map((t, i) => `<span class="ms-chip">${tokPre(k)}${esc(t)}<button type="button" data-tokrm="${i}" aria-label="إزالة">✕</button></span>`).join('')}</div>` +
-        `<div class="hint">${isNo ? 'اكتب رقم أوردر (أو جزء منه) واضغط Enter لإضافته — أو الزق كذا رقم مع بعض. النتيجة أي واحد منهم.'
-          : 'اكتب اسم العميل (أو جزء منه) أو رقم تليفونه واضغط Enter لإضافته — كل Enter كلمة بحث جديدة والنتيجة أي واحدة منهم. الفلتر ده بيجيب بيانات شوبيفاي الحية، فبيشتغل لما الأوردرات المطابقة للفلاتر التانية تبقى ٢٥٠ أو أقل.'}</div>` +
+        `<div class="hint">اكتب رقم أوردر (أو جزء منه) واضغط Enter لإضافته — أو الزق كذا رقم مع بعض. النتيجة أي واحد منهم.</div>` +
         `<button class="clear-btn" type="button" data-act="qclear">✕ مسح الاختيار</button></div>`;
     } else if (ty === 'time') {
       h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="tclear">✕ مسح الاختيار</button></div>` +
         `<div class="pop-body">${timeBodyHtml(k)}</div>`;
+    } else if (ty === 'dt') {
+      h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="dtclear">✕ مسح الاختيار</button></div>` +
+        `<div class="pop-body"><div class="sec-t" style="margin:2px 0 6px">📅 التاريخ</div>${dateInnerHtml('regDate')}` +
+        `<div class="sec-t" style="margin:10px 0 6px">🕐 الوقت</div>${timeBodyHtml('regTime')}</div>`;
     } else {
-      const d = st.date[k], cy = curYear();
-      const pb = p => `<button type="button" data-preset="${p}" class="${d.preset === p ? 'on' : ''}">${PRESETS[p]}</button>`;
-      const mb = (n, i) => { const v = `${popYear}-${pad2(i + 1)}`; return `<button type="button" data-mon="${v}" class="${d.month === v ? 'on' : ''}">${n}</button>`; };
       h = `<div class="pop-hd has-act"><span>${FL[k]}</span><button class="clear-btn" type="button" data-act="dclear">✕ مسح الاختيار</button></div>` +
-        `<div class="pop-body">` +
-        `<div class="sec"><div class="pills c3">${['today','yesterday','last3','last7','last14','last21','last30','last60','last90'].map(pb).join('')}</div></div>` +
-        `<div class="sec"><div class="pills c4">${['thisMonth','lastMonth','thisYear','lastYear'].map(pb).join('')}</div></div>` +
-        `<div class="sec"><div class="yr-step"><button type="button" data-yr="-1" aria-label="السنة السابقة" ${popYear <= cy - 10 ? 'disabled' : ''}>›</button><button type="button" class="yr-lbl ${d.month === String(popYear) ? 'on' : ''}" data-yrsel aria-label="العام كله">${popYear}</button><button type="button" data-yr="1" aria-label="السنة التالية" ${popYear >= cy ? 'disabled' : ''}>‹</button></div><div class="pills c6">${MONTHS_AR.map(mb).join('')}</div></div>` +
-        `<div class="sec"><div class="rng"><div><label for="df-${k}">من تاريخ</label>${dtInp(`id="df-${k}" data-d="from" data-dk="${k}" value="${d.from}"`)}</div><div><label for="dt-${k}">إلى تاريخ</label>${dtInp(`id="dt-${k}" data-d="to" data-dk="${k}" value="${d.to}"`)}</div></div></div>` +
-        `</div>`;
+        `<div class="pop-body">${dateInnerHtml(k)}</div>`;
     }
-    pop.innerHTML = h; pop.classList.toggle('wide', ty === 'date' || ty === 'time');
+    pop.innerHTML = h; pop.classList.toggle('wide', ty === 'date' || ty === 'time' || ty === 'dt');
     place();
+  }
+  // أقسام اختيار التاريخ (presets · شهر/سنة · من-إلى) — مشتركة بين فلتر التاريخ وفلتر «تاريخ / وقت التسجيل»
+  function dateInnerHtml(k) {
+    const d = st.date[k], cy = curYear();
+    const pb = p => `<button type="button" data-preset="${p}" class="${d.preset === p ? 'on' : ''}">${PRESETS[p]}</button>`;
+    const mb = (n, i) => { const v = `${popYear}-${pad2(i + 1)}`; return `<button type="button" data-mon="${v}" class="${d.month === v ? 'on' : ''}">${n}</button>`; };
+    return `<div class="sec"><div class="pills c3">${['today','yesterday','last3','last7','last14','last21','last30','last60','last90'].map(pb).join('')}</div></div>` +
+      `<div class="sec"><div class="pills c4">${['thisMonth','lastMonth','thisYear','lastYear'].map(pb).join('')}</div></div>` +
+      `<div class="sec"><div class="yr-step"><button type="button" data-yr="-1" aria-label="السنة السابقة" ${popYear <= cy - 10 ? 'disabled' : ''}>›</button><button type="button" class="yr-lbl ${d.month === String(popYear) ? 'on' : ''}" data-yrsel aria-label="العام كله">${popYear}</button><button type="button" data-yr="1" aria-label="السنة التالية" ${popYear >= cy ? 'disabled' : ''}>‹</button></div><div class="pills c6">${MONTHS_AR.map(mb).join('')}</div></div>` +
+      `<div class="sec"><div class="rng"><div><label for="df-${k}">من تاريخ</label>${dtInp(`id="df-${k}" data-d="from" data-dk="${k}" value="${d.from}"`)}</div><div><label for="dt-${k}">إلى تاريخ</label>${dtInp(`id="dt-${k}" data-d="to" data-dk="${k}" value="${d.to}"`)}</div></div></div>`;
   }
   function timeBodyHtml(k) {
     const a = st.tm[k], lo = a.from ? hm2m(a.from) : 0, hi = a.to ? hm2m(a.to) : 1440, L = Math.min(lo, hi), H = Math.max(lo, hi);
@@ -3446,7 +3583,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
   // المنزلق والحقول بيتزامنوا على نفس الحالة. المنزلق بخطوة 5 دقايق، والحقل بالدقيقة
   function syncTimeUI(fromSlider) {
-    const tk = popKey; if (!pop || !st.tm[tk]) return;
+    const tk = tK(popKey); if (!pop || !st.tm[tk]) return;
     const a = st.tm[tk], lo = a.from ? hm2m(a.from) : 0, hi = a.to ? hm2m(a.to) : 1440, L = Math.min(lo, hi), H = Math.max(lo, hi);
     const f = pop.querySelector('.dual-fill'); f.style.right = (L / 14.4) + '%'; f.style.left = (100 - H / 14.4) + '%';
     pop.querySelector('.sl-lbl').innerHTML = `من <b>${mLbl(L)}</b> إلى <b>${mLbl(H)}</b>`;
@@ -3456,7 +3593,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
   function updSlider(t) {
     t.value = Math.round(+t.value / 5) * 5;
-    const v = [...pop.querySelectorAll('[data-sl]')].map(i => +i.value), a = Math.min(...v), b = Math.max(...v), s = st.tm[popKey];
+    const v = [...pop.querySelectorAll('[data-sl]')].map(i => +i.value), a = Math.min(...v), b = Math.max(...v), s = st.tm[tK(popKey)];
     s.from = a > 0 ? m2hm(a) : ''; s.to = b < 1440 ? m2hm(b) : '';
     syncTimeUI(true); changed();
   }
@@ -3472,7 +3609,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   function toggleTp(w, anchor) {
     if (tpEl && tpWhich === w) { closeTp(); return; }
     closeTp(); tpWhich = w; tpAnchor = anchor; anchor.classList.add('open');
-    const cur = st.tm[popKey][w], ch = cur ? +cur.slice(0, 2) : -1, cm = cur ? +cur.slice(3) : -1;
+    const cur = st.tm[tK(popKey)][w], ch = cur ? +cur.slice(0, 2) : -1, cm = cur ? +cur.slice(3) : -1;
     const col = (ttl, sub, items) => `<div class="tp-col"><div class="tp-hd">${ttl} <small>${sub}</small></div><div class="tp-list">${items}</div></div>`;
     const hrs = Array.from({ length: 24 }, (_, h) => h).map(h => `<button type="button" class="tp-it ${h === ch ? 'on' : ''}" data-tph="${h}">${pad2(h % 12 || 12)} ${h < 12 ? 'ص' : 'م'}</button>`).join('');
     const mns = Array.from({ length: 60 }, (_, i) => i).map(m => `<button type="button" class="tp-it ${m === cm ? 'on' : ''}" data-tpm="${m}">${pad2(m)}</button>`).join('');
@@ -3483,13 +3620,13 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
   function markTp() {
     if (!tpEl) return;
-    const cur = st.tm[popKey][tpWhich], ch = cur ? +cur.slice(0, 2) : -1, cm = cur ? +cur.slice(3) : (tpM !== null ? tpM : -1);
+    const cur = st.tm[tK(popKey)][tpWhich], ch = cur ? +cur.slice(0, 2) : -1, cm = cur ? +cur.slice(3) : (tpM !== null ? tpM : -1);
     tpEl.querySelectorAll('[data-tph]').forEach(b => b.classList.toggle('on', +b.dataset.tph === ch));
     tpEl.querySelectorAll('[data-tpm]').forEach(b => b.classList.toggle('on', +b.dataset.tpm === cm));
   }
-  function setTf(w, v) { st.tm[popKey][w] = v; tpM = null; syncTimeUI(false); changed(); markTp(); }
+  function setTf(w, v) { st.tm[tK(popKey)][w] = v; tpM = null; syncTimeUI(false); changed(); markTp(); }
   function tpAction(t) {
-    const b = t.closest('.tp-it'), cur = st.tm[popKey][tpWhich];
+    const b = t.closest('.tp-it'), cur = st.tm[tK(popKey)][tpWhich];
     if (b) {
       const ch = cur ? +cur.slice(0, 2) : null, cm = cur ? +cur.slice(3) : tpM;
       if (b.dataset.tph !== undefined) setTf(tpWhich, `${pad2(+b.dataset.tph)}:${pad2(cm === null ? 0 : cm)}`);
@@ -3502,8 +3639,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
   function renderList() { const l = pop && pop.querySelector('.ms-list'); if (l) l.innerHTML = listHtml(popKey); }
   function markDatePop() {   // تحديث حالة الأزرار من غير إعادة بناء القايمة (عشان الفوكس)
-    if (!pop || typeOf(popKey) !== 'date') return;
-    const d = st.date[popKey];
+    if (!pop || (typeOf(popKey) !== 'date' && typeOf(popKey) !== 'dt')) return;
+    const d = st.date[dK(popKey)];
     pop.querySelectorAll('[data-preset]').forEach(b => b.classList.toggle('on', b.dataset.preset === d.preset));
     pop.querySelectorAll('[data-mon]').forEach(b => b.classList.toggle('on', b.dataset.mon === d.month));
     const yl = pop.querySelector('[data-yrsel]'); if (yl) yl.classList.toggle('on', d.month === String(popYear));
@@ -3516,7 +3653,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     return true;
   }
   function popAction(t) {
-    const k = popKey, ty = typeOf(k);
+    const k = popKey, ty = typeOf(k), dk = dK(k);
     if (tpEl && !t.closest('[data-tf]')) closeTp();
     const tfb = t.closest('[data-tf]');
     if (tfb) { toggleTp(tfb.dataset.tf, tfb); return; }
@@ -3525,13 +3662,13 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     const tr = t.closest('[data-tokrm]');
     if (tr) { st.tok[k].splice(+tr.dataset.tokrm, 1); buildPop(); changed(); const f = pop && pop.querySelector('[data-autofocus]'); if (f) f.focus(); return; }
     const ys = t.closest('[data-yrsel]');
-    if (ys) { const v = String(popYear); if (st.date[k].month === v) resetDate(k); else setMonth(k, v); changed(); buildPop(); return; }
+    if (ys) { const v = String(popYear); if (st.date[dk].month === v) resetDate(dk); else setMonth(dk, v); changed(); buildPop(); return; }
     const yb = t.closest('[data-yr]');
     if (yb) { if (yb.disabled) return; popYear = Math.max(curYear() - 10, Math.min(curYear(), popYear + (+yb.dataset.yr))); buildPop(); return; }
     const mb = t.closest('[data-mon]');
-    if (mb) { const v = mb.dataset.mon; if (st.date[k].month === v) resetDate(k); else setMonth(k, v); changed(); buildPop(); return; }
+    if (mb) { const v = mb.dataset.mon; if (st.date[dk].month === v) resetDate(dk); else setMonth(dk, v); changed(); buildPop(); return; }
     const pr = t.closest('[data-preset]');
-    if (pr) { setPreset(k, pr.dataset.preset); changed(); buildPop(); return; }
+    if (pr) { setPreset(dk, pr.dataset.preset); changed(); buildPop(); return; }
     const a = t.closest('[data-act]'); if (!a) return;
     const act = a.dataset.act;
     if (act === 'clear') { if (ty === 'num') st.num[k] = { from: '', to: '' }; else st.ms[k].clear(); buildPop(); changed(); }
@@ -3543,11 +3680,13 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     else if (act === 'qclear') { st.q[k] = ''; st.tok[k] = []; buildPop(); changed(); }
     else if (act === 'dclear') { resetDate(k); buildPop(); changed(); }
     else if (act === 'tclear') { resetTm(k); buildPop(); changed(); }
+    else if (act === 'dtclear') { resetDate('regDate'); resetTm('regTime'); buildPop(); changed(); }
   }
 
   // ── tooltip قيم الفلتر المحددة — مفيش اختيار = مفيش tooltip ──────
   function tipText(k) {
     if (!activeCount(k)) return '';
+    if (k === 'regDT') return [tipText('regDate'), tipText('regTime')].filter(Boolean).join(' — ');
     const ty = typeOf(k);
     if (ty === 'ms') return [...st.ms[k]].map(v => labelOf(k, v)).join('، ');
     if (ty === 'num') { const a = st.num[k]; return `من ${a.from || '—'} إلى ${a.to || '—'}`; }
@@ -3571,7 +3710,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
 
   // ── الأحداث — listener واحد على document + حارس المعيار #32 ──────
-  const inPanel = t => !!(t.closest && t.closest('#panelPending'));
+  const inPanel = t => !!(t.closest && t.closest('#' + cfg.panel));
   document.addEventListener('click', e => {
     const t = e.target;
     if (!document.contains(t)) return;                    // الهدف اتشال بسبب re-render → مفيش قرار قفل
@@ -3597,6 +3736,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       changed(); return;
     }
     if (t.closest('[data-clearall]')) { e.stopPropagation(); if (anyFilterActive()) clearAll(); return; }
+    const dl = t.closest('[data-pddel]');
+    if (dl && cfg.canDelete) { askDelete(dl); return; }
     const so = t.closest('[data-sort]'); if (so) { toggleSort(so.dataset.sort); return; }
     if (t.closest('[data-pdrefresh]')) { e.stopPropagation(); pageNo = 1; fetchNow(); return; }
     const pg = t.closest('[data-pdpage]');
@@ -3605,7 +3746,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       if (next >= 1 && next <= pages) { pageNo = next; fetchNow(); }
       return;
     }
-    if (t.closest('#pdBar')) { Q('#pdWrap').classList.toggle('collapsed'); Q('#pdTog').classList.toggle('open'); return; }
+    if (t.closest(`#${P}Bar`)) { Q(`#${P}Wrap`).classList.toggle('collapsed'); Q(`#${P}Tog`).classList.toggle('open'); return; }
   });
   document.addEventListener('input', e => {
     const t = e.target;
@@ -3628,9 +3769,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (e.key === 'Escape') { if (tpEl) { closeTp(); return; } if (pop) closePop(); return; }
     if (e.key === 'Enter' && !e.isComposing && pop && Q_KEYS.includes(popKey) && pop.contains(e.target) && e.target.matches('input[data-q]') && commitTok(popKey)) { e.preventDefault(); return; }
     if (e.key === 'Enter' && pop && pop.contains(e.target) && e.target.matches('input[data-q],input[data-r],input[data-d]')) { e.preventDefault(); e.target.blur(); closePop(); return; }
-    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('#pdHead [data-sort]')) { e.preventDefault(); toggleSort(e.target.dataset.sort); }
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches(`#${P}Head [data-sort]`)) { e.preventDefault(); toggleSort(e.target.dataset.sort); }
   });
-  document.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest('#pdHead .th-flt'); if (b) showTip(b); else if (tipEl) hideTip(); });
+  document.addEventListener('mouseover', e => { const b = e.target.closest && e.target.closest(`#${P}Head .th-flt`); if (b) showTip(b); else if (tipEl) hideTip(); });
   document.addEventListener('mouseout', e => { if (!e.relatedTarget) hideTip(); });
 
   // ══ التحكم اللايف في عرض الأعمدة (§ 9ب) — «كل الأعمدة متماثلة بالتناسب» ══
@@ -3638,8 +3779,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   // «مثبّت» والباقي بيتمدّد/بيتضغط حواليه · دبل كليك = ضبط تلقائي · محفوظ في localStorage (LS_COLS).
   const MIN_W = 64, MAX_W = 700, INIT_CAP = 260, SOFT_MIN = 110;
   const W = {}; let wReady = false, drag = null, wBadge = null, wRaf = 0;
-  const tbl = () => Q('#pdTbl');
-  const availW = () => { const sc = Q('#pdScroll'); return sc ? sc.clientWidth : 0; };
+  const tbl = () => Q(`#${P}Tbl`);
+  const availW = () => { const sc = Q(`#${P}Scroll`); return sc ? sc.clientWidth : 0; };
   function saveW() { try { localStorage.setItem(LS_COLS, JSON.stringify(W)); } catch (e) {} }
   function loadW() {
     try {
@@ -3673,7 +3814,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (!wReady) return;
     const avail = availW(); if (avail <= 0) return;
     const { E, sum } = effective(avail);
-    document.querySelectorAll('#pdCg col').forEach(col => { col.style.width = E[col.dataset.c] + 'px'; });
+    document.querySelectorAll(`#${P}Cg col`).forEach(col => { col.style.width = E[col.dataset.c] + 'px'; });
     tbl().style.width = sum + 'px';
   }
   function fitWidth(i) {   // أطول محتوى في العمود (nowrap) + 16px
@@ -3691,7 +3832,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     if (wReady || availW() <= 0) return;   // التاب مخفي → ننتظر أول ظهور (ensureW من pdOnShow)
     const t = tbl(); let saved = loadW();
     t.classList.add('auto', 'measuring'); t.style.width = '';
-    document.querySelectorAll('#pdCg col').forEach(c => { c.style.width = ''; });
+    document.querySelectorAll(`#${P}Cg col`).forEach(c => { c.style.width = ''; });
     const nat = {};
     t.querySelectorAll('thead th').forEach(th => { nat[th.dataset.col] = Math.min(INIT_CAP, Math.max(MIN_W, Math.round(th.getBoundingClientRect().width))); });
     const avail = availW();
@@ -3702,7 +3843,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   }
   function ensureW() { (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(initW); }
   function watchW() {   // أي تغيّر في عرض الكارت (ريسايز · سكرول عمودي · طي/فتح) ← إعادة حساب
-    const sc = Q('#pdScroll'); if (!sc) return;
+    const sc = Q(`#${P}Scroll`); if (!sc) return;
     const kick = () => { if (!wRaf) wRaf = requestAnimationFrame(() => { wRaf = 0; applyW(); }); };
     if (typeof ResizeObserver !== 'undefined') new ResizeObserver(kick).observe(sc);
     window.addEventListener('resize', kick);
@@ -3716,7 +3857,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     return room < W[k] ? { cap: MAX_W, free: true } : { cap: Math.min(MAX_W, room), free: false };
   }
   document.addEventListener('pointerdown', e => {
-    const h = e.target.closest && e.target.closest('#pdHead [data-rz]'); if (!h || !wReady) return;
+    const h = e.target.closest && e.target.closest(`#${P}Head [data-rz]`); if (!h || !wReady) return;
     if (e.button !== undefined && e.button !== 0) return;
     e.preventDefault(); e.stopPropagation(); closePop(); hideTip();
     const k = h.dataset.rz, prev = Object.assign({}, W);
@@ -3724,7 +3865,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     drag = { k, prev, moved: false, x: e.clientX, w: W[k], cap: c.cap, free: c.free, sign: getComputedStyle(tbl()).direction === 'rtl' ? -1 : 1, h };
     try { h.setPointerCapture(e.pointerId); } catch (_) {}
     h.classList.add('active'); document.body.classList.add('col-resizing');
-    const col = document.querySelector(`#pdCg col[data-c="${k}"]`); if (col) col.classList.add('hl');
+    const col = document.querySelector(`#${P}Cg col[data-c="${k}"]`); if (col) col.classList.add('hl');
     showWBadge(W[k] + ' px');
   });
   document.addEventListener('pointermove', e => {
@@ -3737,7 +3878,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   function endDrag() {
     if (!drag) return;
     drag.h.classList.remove('active'); document.body.classList.remove('col-resizing');
-    document.querySelectorAll('#pdCg col.hl').forEach(c => c.classList.remove('hl'));
+    document.querySelectorAll(`#${P}Cg col.hl`).forEach(c => c.classList.remove('hl'));
     if (drag.moved) bake(drag.k); else Object.assign(W, drag.prev);   // كليك من غير سحب ما يغيّرش حاجة
     drag = null; hideWBadge(); applyW(); saveW();
   }
@@ -3751,7 +3892,14 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     bake(k); applyW(); saveW();
     if (want > c.cap && !c.free) showToast('العمود وصل لأقصى مساحة متاحة في الكارت', 'neutral');
   }
-  document.addEventListener('dblclick', e => { const h = e.target.closest && e.target.closest('#pdHead [data-rz]'); if (h) fitCol(h.dataset.rz); });
+  document.addEventListener('dblclick', e => { const h = e.target.closest && e.target.closest(`#${P}Head [data-rz]`); if (h) fitCol(h.dataset.rz); });
+
+  // ── حذف سجل «اتمسح بدون تحصيل مسجّل» من D1 (تاب المعلّقة بس) ─────────
+  // حذف فعلي مالوش تراجع — مودال تأكيد + PIN الموظف، والـ Worker بيتحقق من الحالة تاني (مش بنثق في الواجهة).
+  function askDelete(btn) {
+    if (!currentEmployee) { showToast('⚠️ سجّل دخول أولاً', 'warn'); return; }
+    openDeleteModal({ orderId: btn.dataset.pddel, orderName: btn.dataset.pdname, regs: +btn.dataset.pdregs || 1 }, () => { fetchNow(); });
+  }
 
   // ── واجهة التاب (بتتنادى من §TABS-JS وشاشة الخروج) ──────────────
   function onShow() {
@@ -3764,14 +3912,27 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     data = null; pageNo = 1; loadedOnce = false;
     resetFilters(); st.sort = { key: null, dir: null };
     closePop(); hideTip();
-    Q('#pdBody').innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>`;
-    Q('#pdCount').textContent = '—'; Q('#pdUpd').textContent = '';
-    Q('#pdPager').style.display = 'none'; Q('#pdWarn').style.display = 'none';
+    Q(`#${P}Body`).innerHTML = `<tr class="empty-row"><td colspan="${COLS.length}">اضغط «↺ تحديث» لعرض الأوردرات</td></tr>`;
+    Q(`#${P}Count`).textContent = '—'; Q(`#${P}Upd`).textContent = '';
+    Q(`#${P}Pager`).style.display = 'none'; Q(`#${P}Warn`).style.display = 'none';
     renderChips(); updateStates();
   }
   buildHead(); renderChips(); updateStates();
   return { onShow, closePop, reset };
-  })();
+  }
+  // ── التابين: «المعلّقة» (pending · cleared · kv_only) و«المحصّلة» (collected · stale) — نفس الكود، كل واحد بحالته وأعمدته ──
+  const PD = makePD('pd', {
+    panel: 'panelPending', scope: 'pending', ls: 'prereg_pending_col_widths_v3', canDelete: true,
+    title: 'المعلّقة', empty: 'لا توجد أوردرات معلّقة',
+    statuses: ['pending', 'stale', 'cleared', 'kv_only'],
+    cols: ['regDT', 'emp', 'orderNo', 'amount', 'courier', 'items', 'status', 'fin', 's1', 's2', 'act'],
+  });
+  const PC = makePD('cl', {
+    panel: 'panelCollected', scope: 'collected', ls: 'prereg_collected_col_widths_v1', canDelete: false,
+    title: 'المحصّلة', empty: 'لا توجد أوردرات محصّلة',
+    statuses: ['collected'],
+    cols: ['regDT', 'emp', 'orderNo', 'amount', 'courier', 'items', 'status', 'collDate', 'collTime', 'camount', 'fin', 's1', 's2'],
+  });
 
   // ── Init ──────────────────────────────────────────────────────
   renderVersionUI();

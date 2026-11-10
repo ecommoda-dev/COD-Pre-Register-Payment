@@ -1,5 +1,5 @@
 /**
- * cod-pre-register-payment-worker  (v2.8.0 — تاب المعلّقة: فلاتر كل الأعمدة + S1/S2 + مبلغ التحصيل بس)
+ * cod-pre-register-payment-worker  (v2.9.0 — تاب المعلّقة منفصل عن المحصّلة + المندوب الحالي من شوبيفاي + حذف سجل «اتمسح»)
  *
  * skills: ecommoda-worker-builder v3.7.1 · ecommoda-constants v3.1.0 ·
  *         shopify-graphql-helper v1.0.0 · ecommoda-tool-migration-playbook (01-09-2026)
@@ -16,19 +16,20 @@
  *   preview        – fetch order data (+ بيانات العميل للعرض فقط) + فحص KV
  *   preRegister    – mark as paid on Shopify + save KV + set metafield + D1 log
  *   checkPending / clearPending / listPending — API لـ cod-payment-center-worker
- *   pending_details – (GET · قراءة بس) KV + D1 (تسجيل + تحصيل) + شوبيفاي الحية لكل الأوردرات المسجّلة مسبقًا
+ *   pending_details – (GET · قراءة بس) KV + D1 (تسجيل + تحصيل) + شوبيفاي الحية — scope=pending|collected (تابين منفصلين)
+ *   delete_preregister – (POST · **حذف فعلي من D1**) صفوف التسجيل المسبق لأوردر حالته «اتمسح بدون تحصيل مسجّل» بس — PIN الموظف + صف تدقيق type=preregister_delete في سجل العمليات
  *   check_employee / register_pin / verify_employee / log_logout / get_employees — Universal D1 Auth
  *   get_logs / get_logs_count / get_logs_export / get_logs_facets — tool=cod_preregister
  *   diag / get_config — فحص ذاتي + نسخة الـ Worker (إلزاميان لأي Worker بيكتب)
  *
- * D1: tool = 'cod_preregister' | type = 'preregister' / 'login' / 'logout'
+ * D1: tool = 'cod_preregister' | type = 'preregister' / 'preregister_delete' / 'login' / 'logout'
  */
 
 // ══════════════════════════════════════════════════════
 // §CONSTANTS
 // ══════════════════════════════════════════════════════
 const TOOL_NAME      = 'cod_preregister';
-const WORKER_VERSION = '2.8.0';
+const WORKER_VERSION = '2.9.0';
 
 // ══════════════════════════════════════════════════════
 // §CORS
@@ -107,7 +108,7 @@ async function registerPin(db, username, pin) {
 // commit. الأداة دي بتكتب (tool, type) واحد بس (cod_preregister) — مفيش
 // كاتب تاني ومفيش writeLogsBatch.
 const LOG_REGISTRY = {
-  cod_preregister: new Set(['login', 'logout', 'preregister']),
+  cod_preregister: new Set(['login', 'logout', 'preregister', 'preregister_delete']),
 };
 
 const isRegisteredLogValue = (tool, type) => !!LOG_REGISTRY[tool]?.has(type);
@@ -153,13 +154,14 @@ async function noteUnregisteredLogValues(db, entries) {
   }
 }
 
-async function writeLog(db, entry) {
+// بيبني statement الإدخال من غير ما ينفّذه — عشان حالات زي الحذف تحط الإدخال + الحذف في db.batch() واحد (ذرّي)
+function insertLog(db, entry) {
   const unregistered = !isRegisteredLogValue(entry.tool, entry.type);
   const extra = unregistered
     ? { ...(entry.extra || {}), _unregistered: true }
     : entry.extra;
 
-  await db.prepare(`
+  return db.prepare(`
     INSERT INTO logs
       (timestamp, tool, type, employee, order_id, order_name,
        sku, product_title, delta, value_before, value_after, notes, extra)
@@ -178,9 +180,12 @@ async function writeLog(db, entry) {
     entry.valueAfter   ?? null,
     entry.notes        ?? null,
     extra ? JSON.stringify(extra) : null
-  ).run();
+  );
+}
 
-  if (unregistered) await noteUnregisteredLogValues(db, [entry]);   // بعد الكتابة، مش قبلها
+async function writeLog(db, entry) {
+  await insertLog(db, entry).run();
+  if (!isRegisteredLogValue(entry.tool, entry.type)) await noteUnregisteredLogValues(db, [entry]);   // بعد الكتابة، مش قبلها
 }
 
 const LOG_EXPORT_MAX = 2000;   // سقف التصدير — بيرجع للواجهة كـ `cap`
@@ -194,8 +199,9 @@ const LOG_EXPORT_MAX = 2000;   // سقف التصدير — بيرجع للوا�
  * الـ UTC وعملية بعد ٩/١٠ مساءً كانت بتقع في اليوم اللي بعده.
  */
 // نتيجة العملية من extra JSON: success | warning | none (صفوف قبل v2.1.0 مالهاش الحقل)
-const LOG_RESULT_SQL = `COALESCE(CASE WHEN json_valid(extra) THEN json_extract(extra, '$.result') END, 'none')`;
-const LOG_RESULT_VALUES = ['success', 'warning', 'none'];
+// 'deleted' = صف تدقيق حذف (type=preregister_delete) — مالوش extra.result، فبيتشتق من الـ type
+const LOG_RESULT_SQL = `COALESCE(CASE WHEN json_valid(extra) THEN json_extract(extra, '$.result') END, CASE WHEN type = 'preregister_delete' THEN 'deleted' ELSE 'none' END)`;
+const LOG_RESULT_VALUES = ['success', 'warning', 'none', 'deleted'];
 
 function cairoMidnightUTC(day) {   // 'YYYY-MM-DD' → ISO بتاع أول لحظة في اليوم ده بالقاهرة
   const [y, m, d] = day.split('-').map(Number);
@@ -599,9 +605,9 @@ async function setPreRegMetafield(token, env, numericId) {
 //   • KV       — مين لسه معلّق دلوقتي (مفتاح preReg:<id> موجود)
 //   • D1       — tool=cod_preregister/preregister: مين سجّل ومتى وبكام
 //                tool=cod_payment/payment (أداة التحصيل): اتحصّل ولا لأ
-//   • شوبيفاي — الحالة الحية + بيانات العميل **للعرض فقط** (نداء nodes واحد)
+//   • شوبيفاي — الحالة الحية: الحالة المالية + المندوب الحالي + S1/S2 (نداء nodes واحد)
 //
-// ⛔ بيانات العميل بتتحط في رد الـ endpoint ده بس — ممنوع تدخل writeLog/extra.
+// بيانات العميل اتشالت من الـ endpoint ده في v2.9.0 (عمود العميل اتحذف). `preview` لسه بيرجّعها للعرض فقط.
 const PAYMENT_TOOL         = 'cod_payment';   // لوج أداة التحصيل — بنقراه بس
 const PENDING_DETAILS_CAP  = 2000;            // سقف صفوف التسجيل المسبق في الاستعلام
 const PENDING_ORPHAN_CAP   = 200;             // سقف قراءة مفاتيح KV اللي مالهاش صف في D1
@@ -627,10 +633,9 @@ async function listKvPendingIds(kv) {
   return { ids, complete };
 }
 
-// الحالة الحية من شوبيفاي (nodes) — بتتقسّم على مجموعات صغيرة: تكلفة الأوردر الواحد ~٩ نقاط
-// (أوبجكتس متداخلة + ميتافيلدين S1/S2) فمجموعة ٥٠ ≈ ٤٥٠ نقطة، تحت سقف الاستعلام الواحد (١٠٠٠).
-// ⛔ بيانات العميل للعرض/الفلترة بس. الكاش هنا في ذاكرة الـ isolate **بس** (TTL قصير، بيموت مع
-// الـ isolate) — ممنوع يتحط في KV/D1 (بيانات شخصية: مفيش تخزين دائم ليها في الأداة دي).
+// الحالة الحية من شوبيفاي (nodes) — بتتقسّم على مجموعات صغيرة. من v2.9.0 اتشالت بيانات العميل من
+// الاستعلام (العمود اتحذف) فالتكلفة نزلت عن ~٩ نقاط للأوردر؛ التقسيم بـ ٥٠ فضل كما هو (هامش أمان).
+// الكاش هنا في ذاكرة الـ isolate **بس** (TTL قصير، بيموت مع الـ isolate) — ممنوع يتحط في KV/D1.
 // بترمي عند الفشل؛ اللي بينادي بيلقطها ويكمّل من غيرها.
 const LIVE_CHUNK = 50;
 const LIVE_TTL_MS = 120000;
@@ -651,10 +656,9 @@ async function getOrdersLiveState(env, orderIds) {
     query liveState($ids: [ID!]!) {
       nodes(ids: $ids) {
         ... on Order {
-          id displayFinancialStatus cancelledAt phone
-          customer { displayName phone }
-          shippingAddress { name phone }
+          id displayFinancialStatus cancelledAt
           totalOutstandingSet { shopMoney { amount } }
+          courier: metafield(namespace: "custom", key: "courier") { value }
           s1: metafield(namespace: "custom", key: "manual_status") { value }
           s2: metafield(namespace: "custom", key: "status_2_r_e") { value }
         }
@@ -673,8 +677,7 @@ async function getOrdersLiveState(env, orderIds) {
         financialStatus: n.displayFinancialStatus || null,
         cancelled:       !!n.cancelledAt,
         outstanding:     n.totalOutstandingSet?.shopMoney?.amount ?? null,
-        customerName:    n.customer?.displayName || n.shippingAddress?.name || null,
-        customerPhone:   n.shippingAddress?.phone || n.customer?.phone || n.phone || null,
+        courier:         n.courier?.value || null,   // custom.courier — المندوب الحالي (مش وقت التسجيل)
         s1:              n.s1?.value || null,   // custom.manual_status
         s2:              n.s2?.value || null,   // custom.status_2_r_e
       };
@@ -706,34 +709,24 @@ function addDaysStr(s, n) {
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 
-// ⚠️ whitelist إجباري للترتيب (نفس مبدأ LOG_SORT_COLUMNS). المنتجات والعميل وأعمدة شوبيفاي الحية
-// (الحالة المالية · S1 · S2) قابلة للفلترة بس — مش للترتيب (مشتقّة من extra أو من شوبيفاي الحية).
+// ⚠️ whitelist إجباري للترتيب (نفس مبدأ LOG_SORT_COLUMNS). المنتجات وأعمدة شوبيفاي الحية
+// (المندوب · الحالة المالية · S1 · S2) قابلة للفلترة بس — مش للترتيب (مشتقّة من extra أو من شوبيفاي الحية).
 const PD_SORT = {
   registeredAt: (i) => i.registeredAt || '',
   employee:     (i) => i.registeredBy || '',
   orderName:    (i) => Number(i.orderDigits) || 0,
   amount:       (i) => Number(i.amount) || 0,
-  courier:      (i) => i.courier || '',
   status:       (i) => i.status,
   collectedAt:  (i) => i.collectedAt || '',
   collAmount:   (i) => Number(i.collAmount) || 0,
 };
 
 const PD_NONE = '__none__';           // قيمة «بدون» في فلاتر المندوب/S1/S2
+// تابين منفصلين: «المعلّقة» = لسه مستنية/مفتاح عالق بعد تحصيل (stale — شذوذ لازم يبان)/اتمسحت من غير تحصيل/مفتاح يتيم · «المحصّلة» = اتحصّلت والمفتاح اتمسح
+const PD_SCOPES = { pending: ['pending', 'stale', 'cleared', 'kv_only'], collected: ['collected'] };
 const PD_LIVE_FILTER_CAP = 250;       // أقصى عدد أوردرات نجيب لها شوبيفاي الحية عشان نفلتر بيها
 
 // ── فلاتر الأعمدة الحية (بتتطبّق بعد جلب شوبيفاي لمجموعة المرشّحين) ──
-function pdCustMatch(lv, tokens) {
-  if (!tokens.length) return true;
-  if (!lv || lv.notFound) return false;
-  const name = String(lv.customerName || '').toLowerCase();
-  const pd = String(lv.customerPhone || '').replace(/\D/g, '');
-  const pdAlt = pd.startsWith('20') ? '0' + pd.slice(2) : pd;   // +20100… = 0100…
-  return tokens.some(t => {
-    const td = t.replace(/\D/g, '');
-    return (!!name && name.includes(t.toLowerCase())) || (td.length >= 3 && (pd.includes(td) || pdAlt.includes(td)));
-  });
-}
 function pdFinKeys(lv) {
   if (!lv || lv.notFound) return ['NOT_FOUND'];
   const k = [];
@@ -839,32 +832,35 @@ async function buildPendingDetails(env, p) {
   // الفلاتر **التانية** — فعدّاد قيمة جوّه قايمة الفلتر بيقول «هتجيب كام لو اخترتها».
   // الأعمدة الحية (العميل · الحالة المالية · S1 · S2) بتتفلتر بعد جلب شوبيفاي لمجموعة المرشّحين
   // (اللي عدّت الفلاتر التانية) — وبسقف PD_LIVE_FILTER_CAP، ولو اتجاوز بيرجع liveBlocked صريح.
-  const emps = p.employees || [], stats = p.statuses || [], ords = p.orders || [];
-  const cour = p.couriers || [], its = p.items || [];
+  const scopeSt = PD_SCOPES[p.scope] || PD_STATUSES;
+  const inScope = items.filter(i => scopeSt.includes(i.status));   // التاب بيشوف حالاته بس — قبل أي فلتر أو facet
+  const emps = p.employees || [], stats = (p.statuses || []).filter(s => scopeSt.includes(s)), ords = p.orders || [];
+  const its = p.items || [];
   const aF = Number.isFinite(p.amountFrom) ? p.amountFrom : null;
   const aT = Number.isFinite(p.amountTo)   ? p.amountTo   : null;
   const cAF = Number.isFinite(p.cAmountFrom) ? p.cAmountFrom : null;
   const cAT = Number.isFinite(p.cAmountTo)   ? p.cAmountTo   : null;
-  const lf = { cust: p.custs || [], fin: p.fins || [], s1: p.s1 || [], s2: p.s2 || [] };
+  const lf = { courier: p.couriers || [], fin: p.fins || [], s1: p.s1 || [], s2: p.s2 || [] };
   const needLive = Object.values(lf).some(a => a.length > 0);
 
-  const facets = { status: {}, employee: {}, courier: {}, items: {}, live: null };
-  PD_STATUSES.forEach(s => { facets.status[s] = 0; });
+  const facets = { status: {}, employee: {}, items: {}, live: null, courierVocab: [] };
+  scopeSt.forEach(s => { facets.status[s] = 0; });
   // كل القيم الموجودة (حتى بعدّاد صفر) عشان القايمة ما تفضّيش لما فلتر تاني يستبعدها
-  for (const i of items) {
+  const vocab = new Set();
+  for (const i of inScope) {
     if (i.registeredBy && !(i.registeredBy in facets.employee)) facets.employee[i.registeredBy] = 0;
-    const ck = i.courier || PD_NONE; if (!(ck in facets.courier)) facets.courier[ck] = 0;
+    if (i.courier) vocab.add(i.courier);   // مفردات قايمة فلتر المندوب (من وقت التسجيل) — الفلترة نفسها على المندوب الحي
     i.skus.forEach(sk => { if (!(sk in facets.items)) facets.items[sk] = 0; });
   }
 
+  facets.courierVocab = [...vocab].sort();
   const candidates = [];
-  for (const i of items) {
+  for (const i of inScope) {
     const { day, hm } = cairoDayHM(i.registeredAt);
     const cd = cairoDayHM(i.collectedAt);
     i.orderDigits = String(i.orderName || '').replace(/\D/g, '');
     const amt = i.amount == null ? NaN : Number(i.amount);
     const camt = i.collAmount == null ? NaN : Number(i.collAmount);
-    const ck = i.courier || PD_NONE;
     const ok = {
       emp:     !emps.length || (!!i.registeredBy && emps.includes(i.registeredBy)),
       status:  !stats.length || stats.includes(i.status),
@@ -872,7 +868,6 @@ async function buildPendingDetails(env, p) {
       amount:  (aF === null || amt >= aF) && (aT === null || amt <= aT),
       date:    (!p.dateFrom || (!!day && day >= p.dateFrom)) && (!p.dateTo || (!!day && day <= p.dateTo)),
       time:    (!p.timeFrom || (!!hm && hm >= p.timeFrom)) && (!p.timeTo || (!!hm && hm <= p.timeTo)),
-      courier: !cour.length || cour.includes(ck),
       items:   !its.length || i.skus.some(sk => its.includes(sk)),
       cdate:   (!p.cDateFrom || (!!cd.day && cd.day >= p.cDateFrom)) && (!p.cDateTo || (!!cd.day && cd.day <= p.cDateTo)),
       ctime:   (!p.cTimeFrom || (!!cd.hm && cd.hm >= p.cTimeFrom)) && (!p.cTimeTo || (!!cd.hm && cd.hm <= p.cTimeTo)),
@@ -882,12 +877,11 @@ async function buildPendingDetails(env, p) {
     if (!failed.length) candidates.push(i);
     if (failed.every(k => k === 'status')) facets.status[i.status] += 1;
     if (failed.every(k => k === 'emp') && i.registeredBy) facets.employee[i.registeredBy] += 1;
-    if (failed.every(k => k === 'courier')) facets.courier[ck] += 1;
     if (failed.every(k => k === 'items')) i.skus.forEach(sk => { facets.items[sk] += 1; });
   }
   // لو فيه فلتر حي، عدّادات الأعمدة العادية بتتحوّل «—» (مش محسوبة على كل الصفوف) — صريح بدل رقم غلط
   const blankCounts = () => {
-    for (const k of ['status', 'employee', 'courier', 'items']) for (const v in facets[k]) facets[k][v] = null;
+    for (const k of ['status', 'employee', 'items']) for (const v in facets[k]) facets[k][v] = null;
   };
 
   // ── الفلاتر الحية ───────────────────────────────────────────────
@@ -907,14 +901,14 @@ async function buildPendingDetails(env, p) {
       };
     }
     const FIN_ALL = ['PAID', 'PENDING', 'PARTIALLY_PAID', 'AUTHORIZED', 'REFUNDED', 'PARTIALLY_REFUNDED', 'VOIDED', 'EXPIRED', 'CANCELLED', 'NOT_FOUND'];
-    facets.live = { fin: {}, s1: {}, s2: {} };
+    facets.live = { fin: {}, courier: {}, s1: {}, s2: {} };
     FIN_ALL.forEach(v => { facets.live.fin[v] = 0; });
     passing = [];
     for (const i of candidates) {
       const lv = live[i.orderId] || { notFound: true };
-      const fk = pdFinKeys(lv), v1 = pdSVal(lv, 's1'), v2 = pdSVal(lv, 's2');
+      const fk = pdFinKeys(lv), vc = pdSVal(lv, 'courier'), v1 = pdSVal(lv, 's1'), v2 = pdSVal(lv, 's2');
       const ok = {
-        cust: pdCustMatch(lv, lf.cust),
+        courier: !lf.courier.length || lf.courier.includes(vc),
         fin:  !lf.fin.length || fk.some(k => lf.fin.includes(k)),
         s1:   !lf.s1.length || lf.s1.includes(v1),
         s2:   !lf.s2.length || lf.s2.includes(v2),
@@ -922,6 +916,7 @@ async function buildPendingDetails(env, p) {
       const failed = Object.keys(ok).filter(k => !ok[k]);
       if (!failed.length) passing.push(i);
       if (failed.every(k => k === 'fin')) fk.forEach(k => { facets.live.fin[k] = (facets.live.fin[k] || 0) + 1; });
+      if (failed.every(k => k === 'courier')) facets.live.courier[vc] = (facets.live.courier[vc] || 0) + 1;
       if (failed.every(k => k === 's1')) facets.live.s1[v1] = (facets.live.s1[v1] || 0) + 1;
       if (failed.every(k => k === 's2')) facets.live.s2[v2] = (facets.live.s2[v2] || 0) + 1;
     }
@@ -949,7 +944,7 @@ async function buildPendingDetails(env, p) {
     orderId: i.orderId, orderName: i.orderName, status: i.status, inKV: i.inKV,
     registeredAt: i.registeredAt, registeredBy: i.registeredBy,
     amount: i.amount, registrations: i.registrations,
-    courier: i.courier, lineItems: i.lineItems,
+    lineItems: i.lineItems,
     transactionId: i.transactionId, result: i.result,
     // مبلغ الأوردر ده بس — من غير تفاصيل جلسة التحصيل (كاش/إنستاباي/محفظة)
     collection: i.collectedAt ? { at: i.collectedAt, by: i.collBy, amount: i.collAmount } : null,
@@ -1152,7 +1147,7 @@ export default {
       if (action === 'pending_details') {
         assertEnv(env);   // DB + PRE_REG_KV بس — شوبيفاي بيتفحص جوّه وبيتحمّل فشله
         const csv = (k) => (url.searchParams.get(k) || '').split(',').map(s => s.trim()).filter(Boolean);
-        // قوايم القيم الحرّة (مندوب · SKU · عميل · S1/S2) بتتفصل بـ '||' — القيمة نفسها ممكن تحتوي فاصلة
+        // قوايم القيم الحرّة (مندوب · SKU · S1/S2) بتتفصل بـ '||' — القيمة نفسها ممكن تحتوي فاصلة
         const list = (k) => (url.searchParams.get(k) || '').split('||').map(x => x.trim()).filter(Boolean);
         const num  = (k) => { const v = url.searchParams.get(k); return v === null || v === '' ? NaN : Number(v); };
         const hm   = (k) => { const v = url.searchParams.get(k) || ''; return /^([01]\d|2[0-3]):[0-5]\d$/.test(v) ? v : null; };
@@ -1164,17 +1159,79 @@ export default {
           amountFrom: num('amountFrom'), amountTo: num('amountTo'),
           dateFrom:   day('dateFrom'),   dateTo:   day('dateTo'),
           timeFrom:   hm('timeFrom'),    timeTo:   hm('timeTo'),
+          scope:      url.searchParams.get('scope') || null,   // pending | collected — whitelist جوّه buildPendingDetails (PD_SCOPES)
           couriers:   list('couriers'),  items: list('items'),
           cAmountFrom: num('cAmountFrom'), cAmountTo: num('cAmountTo'),
           cDateFrom:  day('cDateFrom'),  cDateTo:  day('cDateTo'),
           cTimeFrom:  hm('cTimeFrom'),   cTimeTo:  hm('cTimeTo'),
-          custs:      list('custs'), fins: list('fins'), s1: list('s1'), s2: list('s2'),
+          fins: list('fins'), s1: list('s1'), s2: list('s2'),
           sortKey:    url.searchParams.get('sortKey') || null,   // whitelist جوّه buildPendingDetails (PD_SORT)
           sortDir:    url.searchParams.get('sortDir') || 'desc',
           limit:      Math.min(Math.max(parseInt(url.searchParams.get('limit')  || '100') || 100, 1), 100),
           offset:     Math.max(parseInt(url.searchParams.get('offset') || '0') || 0, 0),
         });
         return json({ ok: true, ...result }, 200, request);
+      }
+
+      // ── delete_preregister — حذف فعلي من D1 لأوردر «اتمسح بدون تحصيل مسجّل» ─────
+      // ⚠️ أول endpoint بيكتب/بيحذف في تاب المعلّقة. الصف ده أثر دفع حقيقي (capture على شوبيفاي)،
+      // فالحذف مقصور على حالة `cleared` بس: المفتاح مش في KV **ومفيش** تحصيل مسجّل بعد التسجيل.
+      // الحارس جوّه الـ endpoint (مش سطر عام). بيحذف كل صفوف `preregister` للأوردر ده (مش الأحدث بس)
+      // عشان الأوردر ما يرجعش يظهر بصف أقدم. مفيش حذف لأي type تاني ولا لأداة تانية.
+      if (action === 'delete_preregister') {
+        if (request.method !== 'POST') return json({ error: 'POST required' }, 405, request);
+        assertEnv(env);
+        const { username, pin } = bodyData;
+        if (!numericId) return json({ error: 'orderId is required' }, 400, request);
+        if (!username || !pin) return json({ ok: false, error: 'username و pin مطلوبان' }, 400, request);
+        const displayName = await verifyEmployee(env.DB, username, pin);
+        // 403 مش 401: الواجهة بتفسّر 401 على إنه «Worker Secret غلط» — والـ PIN الغلط مش ده
+        if (!displayName) return json({ ok: false, error: 'PIN خطأ أو المستخدم غير موجود' }, 403, request);
+
+        const kvKey = `preReg:${numericId}`;
+        const reg = await env.DB.prepare(
+          `SELECT COUNT(*) AS n, MAX(timestamp) AS last_ts, MAX(order_name) AS order_name FROM logs
+           WHERE tool = ? AND type = 'preregister' AND order_id = ?`
+        ).bind(TOOL_NAME, numericId).first();
+        if (!reg || !reg.n) return json({ ok: false, error: 'مفيش سجل تسجيل مسبق للأوردر ده في D1' }, 404, request);
+
+        if (await env.PRE_REG_KV.get(kvKey))
+          return json({ ok: false, error: 'المفتاح لسه موجود في KV — الأوردر معلّق فعلاً، مش هيتحذف' }, 409, request);
+        const paid = await env.DB.prepare(
+          `SELECT COUNT(*) AS n FROM logs WHERE tool = ? AND type = 'payment' AND order_id = ? AND timestamp >= ?`
+        ).bind(PAYMENT_TOOL, numericId, reg.last_ts).first();
+        if (paid && paid.n)
+          return json({ ok: false, error: 'الأوردر ده اتحصّل فعلاً (فيه تحصيل مسجّل) — السجل هو الدليل الوحيد على التحصيل، مش هيتحذف' }, 409, request);
+
+        // آخر فحص للمفتاح قبل الحذف مباشرة (تسجيل جديد ممكن يكون حصل في الفاصل)
+        if (await env.PRE_REG_KV.get(kvKey))
+          return json({ ok: false, error: 'المفتاح اتسجّل من جديد في KV — العملية اتلغت' }, 409, request);
+
+        // صف تدقيق في سجل العمليات (type=preregister_delete) فيه لقطة كاملة من الصفوف المحذوفة — بيتكتب
+        // مع الحذف في db.batch() واحد (ذرّي): يا الاتنين يتمّوا يا ولا واحد، فمفيش حذف من غير أثر.
+        // value_after = null عن قصد: الصف ده مش تسجيل جديد، فمايدخلش في مجاميع المبالغ ولا التصدير كمبلغ.
+        const old = (await env.DB.prepare(
+          `SELECT timestamp, employee, value_after, extra FROM logs
+           WHERE tool = ? AND type = 'preregister' AND order_id = ? ORDER BY timestamp DESC`
+        ).bind(TOOL_NAME, numericId).all()).results || [];
+        const latest = safeJSON(old[0]?.extra);
+        const audit = insertLog(env.DB, {
+          tool: TOOL_NAME, type: 'preregister_delete', employee: username,
+          orderId: numericId, orderName: reg.order_name || null, valueAfter: null,
+          notes: `حذف سجل تسجيل مسبق (${old.length} صف) — اتمسح بدون تحصيل مسجّل`,
+          extra: {
+            deletedCount: old.length, amount: old[0]?.value_after ?? null,
+            courier: latest.courier || null, lineItems: latest.lineItems || [],
+            deletedRows: old.map(r => ({ timestamp: r.timestamp, employee: r.employee, valueAfter: r.value_after, extra: safeJSON(r.extra) })),
+          },
+        });
+        const del = env.DB.prepare(
+          `DELETE FROM logs WHERE tool = ? AND type = 'preregister' AND order_id = ?`
+        ).bind(TOOL_NAME, numericId);
+        const [, delRes] = await env.DB.batch([audit, del]);
+        const deleted = delRes?.meta?.changes ?? 0;
+        console.log(`delete_preregister: order=${numericId} name=${reg.order_name || ''} rows=${deleted} by=${username}`);
+        return json({ ok: true, deleted, orderId: numericId, orderName: reg.order_name || null }, 200, request);
       }
 
       // ⛔ endpoint الترحيل المؤقت `import_pending_kv` اتشال في v2.3.0 —
