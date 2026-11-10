@@ -17,12 +17,12 @@
  *   preRegister    – mark as paid on Shopify + save KV + set metafield + D1 log
  *   checkPending / clearPending / listPending — API لـ cod-payment-center-worker
  *   pending_details – (GET · قراءة بس) KV + D1 (تسجيل + تحصيل) + شوبيفاي الحية — scope=pending|collected (تابين منفصلين)
- *   delete_preregister – (POST · **حذف فعلي من D1**) صفوف التسجيل المسبق لأوردر حالته «اتمسح بدون تحصيل مسجّل» بس — بيتحقق من PIN الموظف
+ *   delete_preregister – (POST · **حذف فعلي من D1**) صفوف التسجيل المسبق لأوردر حالته «اتمسح بدون تحصيل مسجّل» بس — PIN الموظف + صف تدقيق type=preregister_delete في سجل العمليات
  *   check_employee / register_pin / verify_employee / log_logout / get_employees — Universal D1 Auth
  *   get_logs / get_logs_count / get_logs_export / get_logs_facets — tool=cod_preregister
  *   diag / get_config — فحص ذاتي + نسخة الـ Worker (إلزاميان لأي Worker بيكتب)
  *
- * D1: tool = 'cod_preregister' | type = 'preregister' / 'login' / 'logout'
+ * D1: tool = 'cod_preregister' | type = 'preregister' / 'preregister_delete' / 'login' / 'logout'
  */
 
 // ══════════════════════════════════════════════════════
@@ -108,7 +108,7 @@ async function registerPin(db, username, pin) {
 // commit. الأداة دي بتكتب (tool, type) واحد بس (cod_preregister) — مفيش
 // كاتب تاني ومفيش writeLogsBatch.
 const LOG_REGISTRY = {
-  cod_preregister: new Set(['login', 'logout', 'preregister']),
+  cod_preregister: new Set(['login', 'logout', 'preregister', 'preregister_delete']),
 };
 
 const isRegisteredLogValue = (tool, type) => !!LOG_REGISTRY[tool]?.has(type);
@@ -154,13 +154,14 @@ async function noteUnregisteredLogValues(db, entries) {
   }
 }
 
-async function writeLog(db, entry) {
+// بيبني statement الإدخال من غير ما ينفّذه — عشان حالات زي الحذف تحط الإدخال + الحذف في db.batch() واحد (ذرّي)
+function insertLog(db, entry) {
   const unregistered = !isRegisteredLogValue(entry.tool, entry.type);
   const extra = unregistered
     ? { ...(entry.extra || {}), _unregistered: true }
     : entry.extra;
 
-  await db.prepare(`
+  return db.prepare(`
     INSERT INTO logs
       (timestamp, tool, type, employee, order_id, order_name,
        sku, product_title, delta, value_before, value_after, notes, extra)
@@ -179,9 +180,12 @@ async function writeLog(db, entry) {
     entry.valueAfter   ?? null,
     entry.notes        ?? null,
     extra ? JSON.stringify(extra) : null
-  ).run();
+  );
+}
 
-  if (unregistered) await noteUnregisteredLogValues(db, [entry]);   // بعد الكتابة، مش قبلها
+async function writeLog(db, entry) {
+  await insertLog(db, entry).run();
+  if (!isRegisteredLogValue(entry.tool, entry.type)) await noteUnregisteredLogValues(db, [entry]);   // بعد الكتابة، مش قبلها
 }
 
 const LOG_EXPORT_MAX = 2000;   // سقف التصدير — بيرجع للواجهة كـ `cap`
@@ -195,8 +199,9 @@ const LOG_EXPORT_MAX = 2000;   // سقف التصدير — بيرجع للوا�
  * الـ UTC وعملية بعد ٩/١٠ مساءً كانت بتقع في اليوم اللي بعده.
  */
 // نتيجة العملية من extra JSON: success | warning | none (صفوف قبل v2.1.0 مالهاش الحقل)
-const LOG_RESULT_SQL = `COALESCE(CASE WHEN json_valid(extra) THEN json_extract(extra, '$.result') END, 'none')`;
-const LOG_RESULT_VALUES = ['success', 'warning', 'none'];
+// 'deleted' = صف تدقيق حذف (type=preregister_delete) — مالوش extra.result، فبيتشتق من الـ type
+const LOG_RESULT_SQL = `COALESCE(CASE WHEN json_valid(extra) THEN json_extract(extra, '$.result') END, CASE WHEN type = 'preregister_delete' THEN 'deleted' ELSE 'none' END)`;
+const LOG_RESULT_VALUES = ['success', 'warning', 'none', 'deleted'];
 
 function cairoMidnightUTC(day) {   // 'YYYY-MM-DD' → ISO بتاع أول لحظة في اليوم ده بالقاهرة
   const [y, m, d] = day.split('-').map(Number);
@@ -717,8 +722,8 @@ const PD_SORT = {
 };
 
 const PD_NONE = '__none__';           // قيمة «بدون» في فلاتر المندوب/S1/S2
-// تابين منفصلين: «المعلّقة» = لسه مستنية/اتمسحت من غير تحصيل/مفتاح يتيم · «المحصّلة» = اتحصّلت (حتى لو المفتاح عالق)
-const PD_SCOPES = { pending: ['pending', 'cleared', 'kv_only'], collected: ['collected', 'stale'] };
+// تابين منفصلين: «المعلّقة» = لسه مستنية/مفتاح عالق بعد تحصيل (stale — شذوذ لازم يبان)/اتمسحت من غير تحصيل/مفتاح يتيم · «المحصّلة» = اتحصّلت والمفتاح اتمسح
+const PD_SCOPES = { pending: ['pending', 'stale', 'cleared', 'kv_only'], collected: ['collected'] };
 const PD_LIVE_FILTER_CAP = 250;       // أقصى عدد أوردرات نجيب لها شوبيفاي الحية عشان نفلتر بيها
 
 // ── فلاتر الأعمدة الحية (بتتطبّق بعد جلب شوبيفاي لمجموعة المرشّحين) ──
@@ -1201,10 +1206,30 @@ export default {
         // آخر فحص للمفتاح قبل الحذف مباشرة (تسجيل جديد ممكن يكون حصل في الفاصل)
         if (await env.PRE_REG_KV.get(kvKey))
           return json({ ok: false, error: 'المفتاح اتسجّل من جديد في KV — العملية اتلغت' }, 409, request);
-        const del = await env.DB.prepare(
+
+        // صف تدقيق في سجل العمليات (type=preregister_delete) فيه لقطة كاملة من الصفوف المحذوفة — بيتكتب
+        // مع الحذف في db.batch() واحد (ذرّي): يا الاتنين يتمّوا يا ولا واحد، فمفيش حذف من غير أثر.
+        // value_after = null عن قصد: الصف ده مش تسجيل جديد، فمايدخلش في مجاميع المبالغ ولا التصدير كمبلغ.
+        const old = (await env.DB.prepare(
+          `SELECT timestamp, employee, value_after, extra FROM logs
+           WHERE tool = ? AND type = 'preregister' AND order_id = ? ORDER BY timestamp DESC`
+        ).bind(TOOL_NAME, numericId).all()).results || [];
+        const latest = safeJSON(old[0]?.extra);
+        const audit = insertLog(env.DB, {
+          tool: TOOL_NAME, type: 'preregister_delete', employee: username,
+          orderId: numericId, orderName: reg.order_name || null, valueAfter: null,
+          notes: `حذف سجل تسجيل مسبق (${old.length} صف) — اتمسح بدون تحصيل مسجّل`,
+          extra: {
+            deletedCount: old.length, amount: old[0]?.value_after ?? null,
+            courier: latest.courier || null, lineItems: latest.lineItems || [],
+            deletedRows: old.map(r => ({ timestamp: r.timestamp, employee: r.employee, valueAfter: r.value_after, extra: safeJSON(r.extra) })),
+          },
+        });
+        const del = env.DB.prepare(
           `DELETE FROM logs WHERE tool = ? AND type = 'preregister' AND order_id = ?`
-        ).bind(TOOL_NAME, numericId).run();
-        const deleted = del?.meta?.changes ?? 0;
+        ).bind(TOOL_NAME, numericId);
+        const [, delRes] = await env.DB.batch([audit, del]);
+        const deleted = delRes?.meta?.changes ?? 0;
         console.log(`delete_preregister: order=${numericId} name=${reg.order_name || ''} rows=${deleted} by=${username}`);
         return json({ ok: true, deleted, orderId: numericId, orderName: reg.order_name || null }, 200, request);
       }

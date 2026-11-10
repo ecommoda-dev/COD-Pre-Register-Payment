@@ -1154,7 +1154,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
             <tr><td><code>checkPending / clearPending / listPending</code></td><td>API داخلي لـ cod-payment-center-worker</td></tr>
             <tr><td><code>get_logs / get_logs_count / get_logs_facets</code></td><td>سجل التسجيلات — فلترة (<code>employees</code> · <code>results</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> — يوم القاهرة) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلهم server-side</td></tr>
             <tr><td><code>pending_details</code></td><td>تابا «المعلّقة» و«المحصّلة» (<code>scope=pending|collected</code>) — KV + D1 (تسجيل وتحصيل) + شوبيفاي الحية (المندوب · الحالة المالية · S1 · S2). قراءة بس، فلترة (<code>statuses</code> · <code>employees</code> · <code>orders</code> · <code>amountFrom/To</code> · <code>dateFrom/To</code> · <code>timeFrom/To</code> · <code>couriers</code> · <code>items</code> · <code>cAmountFrom/To</code> · <code>cDateFrom/To</code> · <code>cTimeFrom/To</code> · <code>fins</code> · <code>s1</code> · <code>s2</code>) وترتيب (<code>sortKey</code>/<code>sortDir</code>) وصفحات، كلها server-side</td></tr>
-            <tr><td><code>delete_preregister</code></td><td>POST — حذف فعلي من D1 لأوردر «اتمسح بدون تحصيل مسجّل» (PIN الموظف + مفتاح KV مش موجود + مفيش تحصيل مسجّل)</td></tr>
+            <tr><td><code>delete_preregister</code></td><td>POST — حذف فعلي من D1 لأوردر «اتمسح بدون تحصيل مسجّل» (PIN الموظف + مفتاح KV مش موجود + مفيش تحصيل مسجّل) + صف تدقيق <code>preregister_delete</code> في سجل العمليات</td></tr>
             <tr><td><code>get_logs_export</code></td><td>تصدير XLSX — بيرجّع <code>cap</code>/<code>total</code>/<code>truncated</code> عشان الواجهة تحذّر لو الملف اتقص</td></tr>
             <tr><td><code>diag</code></td><td>فحص ذاتي بدون كتابة (متغيرات · D1 · KV · OAuth · صلاحيات شوبيفاي · CORS)</td></tr>
             <tr><td><code>get_config</code></td><td>نسخة الـ Worker — الواجهة بتقارنها بـ <code>MIN_WORKER_VERSION</code></td></tr>
@@ -1232,11 +1232,11 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
           <span class="cl-ver-date">10-11-2026</span>
         </div>
         <ul class="cl-items">
-          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>تاب <b>المعلّقة والمحصّلة</b> اتقسم لتابين: <b>⏳ المعلّقة</b> (معلّق · اتمسح بدون تحصيل · مفتاح KV بدون سجل) و<b>✅ المحصّلة</b> (اتحصّل · اتحصّل والمفتاح عالق). كل تاب بفلاتره وعدّاداته، والحالات في فلتر «الحالة» بتتقصر على حالات التاب ده</span></li>
+          <li class="cl-item"><span class="cl-tag change">تغيير</span><span>تاب <b>المعلّقة والمحصّلة</b> اتقسم لتابين: <b>⏳ المعلّقة</b> (معلّق · اتحصّل والمفتاح عالق · اتمسح بدون تحصيل · مفتاح KV بدون سجل) و<b>✅ المحصّلة</b> (اتحصّل). كل تاب بفلاتره وعدّاداته، والحالات في فلتر «الحالة» بتتقصر على حالات التاب ده</span></li>
           <li class="cl-item"><span class="cl-tag change">تغيير</span><span>اتشالت أعمدة <b>تاريخ التحصيل ووقت التحصيل والتحصيل (EGP)</b> من تاب المعلّقة (موجودة في تاب المحصّلة)</span></li>
           <li class="cl-item"><span class="cl-tag change">تغيير</span><span>عمودا تاريخ ووقت التسجيل اتدمجوا في عمود واحد <b>«تاريخ / وقت التسجيل»</b> — التاريخ فوق والوقت تحته، بفلتر واحد فيه قسم تاريخ + قسم وقت، وترتيب على اللحظة نفسها</span></li>
           <li class="cl-item"><span class="cl-tag change">تغيير</span><span>عمود <b>المندوب</b> بقى بياخد قيمته من شوبيفاي الحية (<code>custom.courier</code> — المندوب <b>الحالي</b>) زي S1/S2، مش من وقت التسجيل. الفلتر بقى حي (حد ٢٥٠ أوردر) وبقى بلا ترتيب</span></li>
-          <li class="cl-item"><span class="cl-tag new">جديد</span><span>زرار <b>🗑 حذف السجل</b> على صفوف «اتمسح بدون تحصيل مسجّل» — حذف فعلي من D1 بعد تأكيد بالـ PIN. الـ Worker بيرفض لو المفتاح لسه في KV أو فيه تحصيل مسجّل</span></li>
+          <li class="cl-item"><span class="cl-tag new">جديد</span><span>زرار <b>🗑 حذف السجل</b> على صفوف «اتمسح بدون تحصيل مسجّل» — حذف فعلي من D1 بعد تأكيد بالـ PIN. الـ Worker بيرفض لو المفتاح لسه في KV أو فيه تحصيل مسجّل. وكل حذف بيتسجّل في <b>سجل العمليات</b> كصف «🗑 اتحذف» فيه لقطة كاملة من الصفوف المحذوفة (الكتابة والحذف في batch واحد)</span></li>
           <li class="cl-item"><span class="cl-tag change">تغيير</span><span>اتشال عمود <b>العميل</b> وفلتره (والـ Worker بطّل يجيب بيانات العميل في تاب المعلّقة)</span></li>
         </ul>
       </div>
@@ -1537,7 +1537,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     delCtx = { ...ctx, onDone };
     $('delMsg').textContent = `هيتحذف نهائيًا من D1 سجل التسجيل المسبق للأوردر ${ctx.orderName ? '#' + String(ctx.orderName).replace(/^#/, '') : ctx.orderId}`
       + (ctx.regs > 1 ? ` (${ctx.regs} تسجيلات — كلهم)` : '') + '.\n'
-      + 'السجل ده أثر دفع اتسجّل على شوبيفاي، وبيتشال كمان من سجل العمليات والتصدير. مالوش تراجع.';
+      + 'السجل ده أثر دفع اتسجّل على شوبيفاي، وبيتشال من التصدير ومن خط الأساس. هيتسجّل صف «اتحذف» في سجل العمليات فيه لقطة من الصفوف المحذوفة. الحذف نفسه مالوش تراجع.';
     $('delMsg').style.whiteSpace = 'pre-line';
     $('delPin').value = ''; $('delErr').textContent = '';
     $('delOverlay').classList.add('open');
@@ -2115,7 +2115,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
         collect:  (amount != null && shipping != null) ? amount - shipping : null,
         courier:  extra.courier || '',
         items:    (extra.lineItems || []).map(li => `${li.sku} × ${li.quantity}`).join('، '),
-        result:   extra.result ? (extra.result === 'warning' ? 'تم جزئيًا' : 'تم') : '—',
+        result:   row.type === 'preregister_delete' ? 'اتحذف' : (extra.result ? (extra.result === 'warning' ? 'تم جزئيًا' : 'تم') : '—'),
       });
     });
 
@@ -2446,8 +2446,9 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     success: { label: '✓ تم',         cls: 'ok',   hint: 'كل الخطوات تمّت' },
     warning: { label: '⚠ تم جزئيًا',  cls: 'warn', hint: 'الفلوس اتسجّلت وخطوة تابعة ما تمّتش' },
     none:    { label: '—',            cls: 'none', hint: 'صف قبل v2.1.0 — مالوش حقل النتيجة (مش عارفين)' },
+    deleted: { label: '🗑 اتحذف',      cls: 'bad',  hint: 'صف تدقيق: سجل التسجيل المسبق اتحذف من D1 (أوردر اتمسح بدون تحصيل مسجّل)' },
   };
-  const RESULT_ORDER = ['success', 'warning', 'none'];
+  const RESULT_ORDER = ['success', 'warning', 'none', 'deleted'];
 
   const FL = { date: 'التاريخ', emp: 'الموظف', orderNo: 'رقم الأوردر', amount: 'المبلغ', result: 'النتيجة' };
   const MS_KEYS = ['emp', 'result'], NUM_KEYS = ['amount'], Q_KEYS = ['orderNo'], DATE_KEYS = ['date'], TIME_KEYS = [];
@@ -2633,7 +2634,8 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
     const itemsCell = items.length
       ? `<div class="items-chips">${items.map(li => `<span class="item-chip">${esc(li.sku)} × ${esc(li.quantity)}</span>`).join('')}</div>` : '—';
     // الصفوف الأقدم من Worker v2.1.0 مالها extra.result — بتتعرض "—" مش "✓" (مش عارفين إن كل الخطوات تمّت)
-    const rs = RESULT[extra.result === 'success' || extra.result === 'warning' ? extra.result : 'none'];
+    const rs = RESULT[row.type === 'preregister_delete' ? 'deleted' : (extra.result === 'success' || extra.result === 'warning' ? extra.result : 'none')];
+    const delInfo = row.type === 'preregister_delete' ? ` — ${row.notes || ''}` : '';
     return `<tr>
       <td class="col-num">${formatDate(row.timestamp)}</td>
       <td class="col-num">${formatTimeOnly(row.timestamp)}</td>
@@ -2644,7 +2646,7 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
       <td class="col-num">${collect != null ? fmt(collect) : '—'}</td>
       <td>${extra.courier ? esc(extra.courier) : '—'}</td>
       <td class="items-cell" title="${esc(itemsPlain)}">${itemsCell}</td>
-      <td><span class="res-badge ${rs.cls}" title="${esc(rs.hint)}">${rs.label}</span></td>
+      <td><span class="res-badge ${rs.cls}" title="${esc(rs.hint + delInfo)}">${rs.label}</span></td>
     </tr>`;
   }
   function render() {
@@ -3922,13 +3924,13 @@ body.col-resizing,body.col-resizing *{cursor:col-resize!important;user-select:no
   const PD = makePD('pd', {
     panel: 'panelPending', scope: 'pending', ls: 'prereg_pending_col_widths_v3', canDelete: true,
     title: 'المعلّقة', empty: 'لا توجد أوردرات معلّقة',
-    statuses: ['pending', 'cleared', 'kv_only'],
+    statuses: ['pending', 'stale', 'cleared', 'kv_only'],
     cols: ['regDT', 'emp', 'orderNo', 'amount', 'courier', 'items', 'status', 'fin', 's1', 's2', 'act'],
   });
   const PC = makePD('cl', {
     panel: 'panelCollected', scope: 'collected', ls: 'prereg_collected_col_widths_v1', canDelete: false,
     title: 'المحصّلة', empty: 'لا توجد أوردرات محصّلة',
-    statuses: ['collected', 'stale'],
+    statuses: ['collected'],
     cols: ['regDT', 'emp', 'orderNo', 'amount', 'courier', 'items', 'status', 'collDate', 'collTime', 'camount', 'fin', 's1', 's2'],
   });
 
